@@ -397,6 +397,116 @@
         font-weight: 700;
       }
 
+      .best-grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+
+      .best-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        padding: 14px;
+      }
+
+      .best-role {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .best-name {
+        margin-top: 6px;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .best-score {
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .best-metrics {
+        margin-top: 10px;
+        display: grid;
+        gap: 6px;
+      }
+
+      .best-metric {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 12px;
+      }
+
+      .best-metric span {
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 11px;
+      }
+
+      .ranking-toggle {
+        margin-top: 10px;
+      }
+
+      .ranking-table {
+        margin-top: 12px;
+      }
+
+      .ranking-top {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+
+      .ranking-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        padding: 14px;
+      }
+
+      .ranking-card-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+
+      .ranking-score {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--surface-strong);
+      }
+
+      .ranking-role {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .ranking-bullets {
+        margin: 10px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .ranking-bullets li {
+        margin-bottom: 4px;
+      }
+
       .chart-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -589,6 +699,10 @@
           page-break-after: always;
         }
 
+        .no-print {
+          display: none !important;
+        }
+
         .sample-averages-items {
           grid-auto-flow: row;
           grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -687,6 +801,24 @@
         <div id="dashboardContent" class="empty">No respondent selected.</div>
       </section>
 
+      <section class="panel no-print" id="bestCandidates">
+        <h2>Miglior candidato</h2>
+        <p class="note">Selezione per ruolo basata sulla modalita di ranking attiva.</p>
+        <div id="bestCandidatesGrid" class="best-grid"></div>
+      </section>
+
+      <section class="panel no-print" id="ranking">
+        <h2>Classifica</h2>
+        <div class="mode-toggle ranking-toggle" role="radiogroup" aria-label="Modalita ranking">
+          <label><input type="radio" name="rankingMode" value="balanced" checked /> Balanced</label>
+          <label><input type="radio" name="rankingMode" value="performance" /> Performance-only</label>
+          <label><input type="radio" name="rankingMode" value="credibility" /> Credibility-first</label>
+        </div>
+        <div id="rankingTable" class="ranking-table"></div>
+        <h3>Top 5 - Perche e qui</h3>
+        <div id="rankingTop" class="ranking-top"></div>
+      </section>
+
       <section class="panel" id="all">
         <h2>All respondents</h2>
         <div class="toolbar">
@@ -721,6 +853,7 @@
       browser. This app never sends data to the network.
     </div>
 
+    <script src="scoring.module.js"></script>
     <script>
       const FIELD_NAMES = {
         name: "Cognome e nome",
@@ -751,6 +884,10 @@
         BIDR_SDE: { label: "Auto-inganno positivo" },
         BIDR_IM: { label: "Gestione dell'impressione" }
       };
+      const SCORE_LABELS = Object.keys(SCORE_INFO).reduce((acc, key) => {
+        acc[key] = SCORE_INFO[key].label;
+        return acc;
+      }, {});
 
       const RADAR_KEYS = SCORE_KEYS.filter((key) => key !== "AUTOEFF_TOT" && key !== "BIDR6_TOT");
 
@@ -790,6 +927,10 @@
         radarAverages: {},
         radarMax: 1,
         sampleAverages: {},
+        rankingMode: "balanced",
+        rankingStats: {},
+        rankingData: [],
+        rangeWarnings: new Set(),
         currentIndex: null,
         compareIndex: null,
         showAllColumns: false,
@@ -970,6 +1111,10 @@
       const searchInput = document.getElementById("searchInput");
       const searchResults = document.getElementById("searchResults");
       const dashboardContent = document.getElementById("dashboardContent");
+      const bestCandidatesGrid = document.getElementById("bestCandidatesGrid");
+      const rankingTable = document.getElementById("rankingTable");
+      const rankingTop = document.getElementById("rankingTop");
+      const rankingModeInputs = document.querySelectorAll("input[name='rankingMode']");
       const sortBy = document.getElementById("sortBy");
       const roleFilter = document.getElementById("roleFilter");
       const allTable = document.getElementById("allTable");
@@ -979,6 +1124,13 @@
       const printAll = document.getElementById("printAll");
 
       const palette = ["#ef5b2a", "#117a65", "#325d8a", "#b85c38", "#4d4d4d", "#c2a93c"];
+      const BEST_ROLES = ["IP", "IPE", "IPS"];
+      const RANKING_MODE_LABELS = {
+        balanced: "Balanced",
+        performance: "Performance-only",
+        credibility: "Credibility-first"
+      };
+      const Scoring = window.Scoring;
 
       function setStatus(message, isError) {
         importStatus.textContent = message;
@@ -1030,6 +1182,10 @@
         state.radarAverages = {};
         state.radarMax = 1;
         state.sampleAverages = {};
+        state.rankingMode = "balanced";
+        state.rankingStats = {};
+        state.rankingData = [];
+        state.rangeWarnings = new Set();
         state.currentIndex = null;
         state.compareIndex = null;
         state.showAllColumns = false;
@@ -1038,12 +1194,16 @@
         preview.innerHTML = "";
         searchResults.innerHTML = "";
         dashboardContent.textContent = "No respondent selected.";
+        renderRanking();
         allTable.innerHTML = "";
         roleFilter.innerHTML = "<option value=\"all\">All</option>";
         autoRulesTable.innerHTML = "";
         manualRulesGrid.innerHTML = "";
         sheetSelect.innerHTML = "";
         sheetPicker.classList.add("hidden");
+        rankingModeInputs.forEach((input) => {
+          input.checked = input.value === state.rankingMode;
+        });
         clearStatus();
       }
 
@@ -1537,6 +1697,7 @@
         renderAutoRulesTable();
         renderSearchResults();
         renderAllRespondents();
+        renderRanking();
         if (state.currentIndex !== null) {
           renderDashboard(state.currentIndex);
         }
@@ -1765,6 +1926,210 @@
         if (state.schema && state.schema.roleField) parts.push(record[state.schema.roleField] || "");
         if (state.schema && state.schema.emailField) parts.push(record[state.schema.emailField] || "");
         return parts.join(" ").toLowerCase();
+      }
+
+      function formatValue(value) {
+        return Number.isFinite(value) ? value.toFixed(2) : "N/A";
+      }
+
+      function extractRoleCode(roleText) {
+        const text = String(roleText || "").toUpperCase();
+        if (text.includes("IPE")) return "IPE";
+        if (text.includes("IPS")) return "IPS";
+        if (text.includes("IP")) return "IP";
+        return "";
+      }
+
+      function getRankingModeLabel() {
+        return RANKING_MODE_LABELS[state.rankingMode] || RANKING_MODE_LABELS.balanced;
+      }
+
+      function buildRankingCandidates() {
+        return state.computed.map((entry) => ({
+          index: entry.index,
+          record: entry.record,
+          name: getDisplayName(entry.record),
+          role: getRole(entry.record),
+          roleCode: extractRoleCode(getRole(entry.record)),
+          scores: entry.scores
+        }));
+      }
+
+      function buildBestMetric(label, value) {
+        const row = document.createElement("div");
+        row.className = "best-metric";
+        const name = document.createElement("span");
+        name.textContent = label;
+        const val = document.createElement("strong");
+        val.textContent = formatValue(value);
+        row.appendChild(name);
+        row.appendChild(val);
+        return row;
+      }
+
+      function renderBestCandidates(ranked) {
+        bestCandidatesGrid.innerHTML = "";
+        if (!ranked.length) {
+          bestCandidatesGrid.innerHTML = "<div class=\"empty\">Load data to see best candidates.</div>";
+          return;
+        }
+        const modeLabel = getRankingModeLabel();
+        BEST_ROLES.forEach((role) => {
+          const card = document.createElement("div");
+          card.className = "best-card";
+          const roleEl = document.createElement("div");
+          roleEl.className = "best-role";
+          roleEl.textContent = role;
+          card.appendChild(roleEl);
+          const best = ranked.find((candidate) => candidate.roleCode === role);
+          if (!best) {
+            const empty = document.createElement("div");
+            empty.className = "empty";
+            empty.textContent = "Nessun candidato";
+            card.appendChild(empty);
+          } else {
+            const name = document.createElement("div");
+            name.className = "best-name";
+            name.textContent = best.name;
+            const score = document.createElement("div");
+            score.className = "best-score";
+            score.textContent = `Score ${modeLabel}: ${formatValue(best.scoring.score)}`;
+            const metrics = document.createElement("div");
+            metrics.className = "best-metrics";
+            metrics.appendChild(buildBestMetric("AUTOEFF_TOT", best.scores.AUTOEFF_TOT));
+            metrics.appendChild(buildBestMetric("NPOQ-R", best.scores["NPOQ-R"]));
+            metrics.appendChild(buildBestMetric("BIDR6_TOT", best.scores.BIDR6_TOT));
+            card.appendChild(name);
+            card.appendChild(score);
+            card.appendChild(metrics);
+          }
+          bestCandidatesGrid.appendChild(card);
+        });
+      }
+
+      function renderRankingTable(ranked) {
+        rankingTable.innerHTML = "";
+        if (!ranked.length) {
+          rankingTable.innerHTML = "<div class=\"empty\">Load data to see ranking.</div>";
+          return;
+        }
+        const tableWrap = document.createElement("div");
+        tableWrap.className = "table-wrap";
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        const modeLabel = getRankingModeLabel();
+        ["Nome", `Score (${modeLabel})`, "AUTOEFF_TOT", "NPOQ-R", "BIDR6_TOT"].forEach((title) => {
+          const th = document.createElement("th");
+          th.textContent = title;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        ranked.forEach((candidate) => {
+          const tr = document.createElement("tr");
+          const nameTd = document.createElement("td");
+          nameTd.textContent = candidate.name;
+          const scoreTd = document.createElement("td");
+          scoreTd.textContent = formatValue(candidate.scoring.score);
+          const autoeffTd = document.createElement("td");
+          autoeffTd.textContent = formatValue(candidate.scores.AUTOEFF_TOT);
+          const npoqTd = document.createElement("td");
+          npoqTd.textContent = formatValue(candidate.scores["NPOQ-R"]);
+          const bidrTd = document.createElement("td");
+          bidrTd.textContent = formatValue(candidate.scores.BIDR6_TOT);
+          tr.appendChild(nameTd);
+          tr.appendChild(scoreTd);
+          tr.appendChild(autoeffTd);
+          tr.appendChild(npoqTd);
+          tr.appendChild(bidrTd);
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        rankingTable.appendChild(tableWrap);
+      }
+
+      function renderRankingTop(ranked, statsByMetric) {
+        rankingTop.innerHTML = "";
+        if (!ranked.length) {
+          rankingTop.innerHTML = "<div class=\"empty\">Load data to see top 5.</div>";
+          return;
+        }
+        const modeLabel = getRankingModeLabel();
+        const labelsByKey = SCORE_LABELS;
+        ranked.slice(0, 5).forEach((candidate, index) => {
+          const card = document.createElement("div");
+          card.className = "ranking-card";
+          const header = document.createElement("div");
+          header.className = "ranking-card-header";
+          const nameWrap = document.createElement("div");
+          const name = document.createElement("strong");
+          name.textContent = `${index + 1}. ${candidate.name}`;
+          const role = document.createElement("div");
+          role.className = "ranking-role";
+          role.textContent = candidate.roleCode || "";
+          nameWrap.appendChild(name);
+          if (role.textContent) nameWrap.appendChild(role);
+          const score = document.createElement("div");
+          score.className = "ranking-score";
+          score.textContent = `Score ${modeLabel}: ${formatValue(candidate.scoring.score)}`;
+          header.appendChild(nameWrap);
+          header.appendChild(score);
+
+          const explanation = Scoring.explainCandidate(candidate, statsByMetric, state.rankingMode, {
+            labelsByKey,
+            scoring: candidate.scoring
+          });
+          const list = document.createElement("ul");
+          list.className = "ranking-bullets";
+          [explanation.driverText, explanation.strengthsText, explanation.warningsText].forEach((text) => {
+            const li = document.createElement("li");
+            li.textContent = text;
+            list.appendChild(li);
+          });
+
+          card.appendChild(header);
+          card.appendChild(list);
+          rankingTop.appendChild(card);
+        });
+      }
+
+      function logRangeWarnings(candidates) {
+        if (!Scoring || !Scoring.validateRanges) return;
+        const warnings = Scoring.validateRanges(candidates, Scoring.RANGE_BY_KEY);
+        warnings.forEach((warning) => {
+          if (!state.rangeWarnings.has(warning.id)) {
+            console.warn(warning.message);
+            state.rangeWarnings.add(warning.id);
+          }
+        });
+      }
+
+      function renderRanking() {
+        if (!bestCandidatesGrid || !rankingTable || !rankingTop) return;
+        if (!state.computed.length) {
+          bestCandidatesGrid.innerHTML = "<div class=\"empty\">Load data to see best candidates.</div>";
+          rankingTable.innerHTML = "<div class=\"empty\">Load data to see ranking.</div>";
+          rankingTop.innerHTML = "<div class=\"empty\">Load data to see top 5.</div>";
+          return;
+        }
+        if (!Scoring || !Scoring.rankCandidates) {
+          rankingTable.innerHTML = "<div class=\"empty\">Scoring module not available.</div>";
+          return;
+        }
+        const candidates = buildRankingCandidates();
+        const statsByMetric = Scoring.computeStatsByMetric(candidates, SCORE_KEYS);
+        const ranked = Scoring.rankCandidates(candidates, statsByMetric, state.rankingMode);
+        state.rankingStats = statsByMetric;
+        state.rankingData = ranked;
+        logRangeWarnings(candidates);
+        renderBestCandidates(ranked);
+        renderRankingTable(ranked);
+        renderRankingTop(ranked, statsByMetric);
       }
 
       function renderSearchResults() {
@@ -2502,6 +2867,13 @@
         });
       });
 
+      rankingModeInputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          state.rankingMode = input.value;
+          renderRanking();
+        });
+      });
+
       applyLabels.addEventListener("click", () => {
         readManualRulesFromDom();
         computeScores();
@@ -2526,6 +2898,7 @@
       state.manualRules = defaultManualRules();
       renderManualRules();
       renderSearchResults();
+      renderRanking();
     </script>
   </body>
 </html>

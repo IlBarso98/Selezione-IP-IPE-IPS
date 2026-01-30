@@ -1,0 +1,11 @@
+{
+  "name": "selezione-ip-ipe-ips",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^1.6.0"
+  }
+}
