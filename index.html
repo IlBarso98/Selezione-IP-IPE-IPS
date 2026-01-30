@@ -1,0 +1,2531 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Selezione IP/IPE/IPS Dashboard</title>
+    <style>
+      :root {
+        --bg: #f4efe4;
+        --bg-accent: #e8dfcc;
+        --surface: #fff9f0;
+        --surface-strong: #fff2dd;
+        --ink: #1f1a14;
+        --muted: #6b5e4a;
+        --accent: #ef5b2a;
+        --accent-2: #117a65;
+        --accent-3: #c2a93c;
+        --danger: #b9382c;
+        --ok: #1c7c54;
+        --shadow: 0 16px 40px rgba(31, 26, 20, 0.18);
+        --radius: 18px;
+        --radius-sm: 12px;
+        --ring: 2px solid rgba(31, 26, 20, 0.25);
+        --panel-gap: 20px;
+        --max-width: 1200px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 15% 15%, rgba(239, 91, 42, 0.16), transparent 45%),
+          radial-gradient(circle at 85% 0%, rgba(17, 122, 101, 0.15), transparent 40%),
+          linear-gradient(135deg, var(--bg) 0%, var(--bg-accent) 100%);
+        min-height: 100vh;
+      }
+
+      header {
+        padding: 32px 24px 0;
+        max-width: var(--max-width);
+        margin: 0 auto;
+      }
+
+      .title {
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+        font-size: clamp(28px, 4vw, 40px);
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        max-width: 820px;
+      }
+
+      main {
+        max-width: var(--max-width);
+        margin: 0 auto;
+        padding: 24px;
+        display: grid;
+        gap: var(--panel-gap);
+      }
+
+      .panel {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 24px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+        animation: fadeUp 0.45s ease both;
+      }
+
+      .panel::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0.45), transparent 70%);
+        pointer-events: none;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 20px;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      p {
+        margin: 0 0 12px;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      label {
+        font-size: 14px;
+      }
+
+      .btn {
+        border: none;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .btn.secondary {
+        background: var(--accent-2);
+      }
+
+      .btn.ghost {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid rgba(31, 26, 20, 0.2);
+      }
+
+      .btn:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      textarea:focus-visible {
+        outline: var(--ring);
+        outline-offset: 2px;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 24px rgba(239, 91, 42, 0.2);
+      }
+
+      .chip-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+      }
+
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface-strong);
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        font-size: 14px;
+      }
+
+      .status {
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        margin-top: 12px;
+        background: rgba(17, 122, 101, 0.12);
+        color: var(--ok);
+        font-weight: 600;
+      }
+
+      .status.error {
+        background: rgba(185, 56, 44, 0.12);
+        color: var(--danger);
+      }
+
+      .preview {
+        margin-top: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th,
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid rgba(31, 26, 20, 0.1);
+        text-align: left;
+      }
+
+      th {
+        font-weight: 700;
+      }
+
+      .rules-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .rules-card {
+        background: rgba(255, 255, 255, 0.7);
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(31, 26, 20, 0.1);
+      }
+
+      .rules-card table input {
+        width: 100%;
+        padding: 6px;
+        border-radius: 8px;
+        border: 1px solid rgba(31, 26, 20, 0.2);
+        background: #fff;
+      }
+
+      .rules-card table input[type="color"] {
+        padding: 0;
+        height: 32px;
+      }
+
+      .mode-toggle {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+
+      .mode-panel {
+        background: rgba(255, 255, 255, 0.6);
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(31, 26, 20, 0.1);
+        margin-bottom: 12px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .search-results {
+        margin-top: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .result-item {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .result-item small {
+        color: var(--muted);
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+
+      .score-card {
+        background: var(--surface-strong);
+        padding: 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+      }
+
+      .score-title {
+        font-size: 13px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .score-subtitle {
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .score-value {
+        font-size: 24px;
+        font-weight: 700;
+        margin-top: 6px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink);
+        background: rgba(31, 26, 20, 0.08);
+      }
+
+      .pill .pill-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .pill .label-text {
+        margin-left: 6px;
+        font-weight: 700;
+        color: currentColor;
+      }
+
+      .sample-averages-bar {
+        margin-top: 12px;
+        background: var(--surface-strong);
+        border-radius: 14px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        padding: 12px 14px;
+      }
+
+      .sample-averages-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .sample-averages-title {
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .sample-averages-subtitle {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .sample-averages-items {
+        margin-top: 10px;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(130px, 1fr);
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .sample-average-item {
+        background: #fff;
+        border-radius: 10px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        padding: 8px 10px;
+        min-width: 120px;
+      }
+
+      .sample-average-code {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .sample-average-label {
+        font-size: 12px;
+        color: var(--ink);
+      }
+
+      .sample-average-value {
+        margin-top: 6px;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .chart-card {
+        background: #fff;
+        border-radius: var(--radius-sm);
+        padding: 12px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+      }
+
+      .radar-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+
+      .legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .legend-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        background: currentColor;
+      }
+
+      .compare-wrapper {
+        position: relative;
+      }
+
+      .compare-panel {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 6px);
+        min-width: 240px;
+        background: #fff;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: var(--shadow);
+        z-index: 10;
+      }
+
+      .compare-panel input {
+        width: 100%;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(31, 26, 20, 0.2);
+      }
+
+      .compare-list {
+        margin-top: 8px;
+        display: grid;
+        gap: 6px;
+        max-height: 200px;
+        overflow: auto;
+      }
+
+      .compare-item {
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(31, 26, 20, 0.12);
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .compare-item:hover {
+        background: var(--surface-strong);
+      }
+
+      .compare-item.active {
+        border-color: var(--accent-2);
+        background: rgba(17, 122, 101, 0.08);
+      }
+
+      .btn.small {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      canvas {
+        width: 100%;
+        height: 260px;
+      }
+
+      .meta-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .meta-item {
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px;
+        border: 1px solid rgba(31, 26, 20, 0.1);
+      }
+
+      .meta-item strong {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        margin-bottom: 4px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 12px;
+      }
+
+      .footer-note {
+        padding: 18px 24px 32px;
+        max-width: var(--max-width);
+        margin: 0 auto;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-style: italic;
+        padding: 8px 0;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid rgba(31, 26, 20, 0.1);
+        border-radius: var(--radius-sm);
+        background: #fff;
+      }
+
+      .note {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .print-root {
+        display: none;
+      }
+
+      body.print-mode main,
+      body.print-mode header,
+      body.print-mode .footer-note {
+        display: none !important;
+      }
+
+      body.print-mode .print-root {
+        display: block;
+      }
+
+      .print-page {
+        page-break-after: always;
+        padding: 24px;
+        background: #fff;
+      }
+
+      @media print {
+        body {
+          background: #fff !important;
+        }
+
+        .print-page {
+          page-break-after: always;
+        }
+
+        .sample-averages-items {
+          grid-auto-flow: row;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          overflow: visible;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .panel {
+          padding: 18px;
+        }
+
+        .toolbar {
+          flex-direction: column;
+          align-items: stretch;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Come usare:
+      1) In Google Sheets: File > Download > Microsoft Excel (.xlsx) oppure Comma-separated values (.csv).
+      2) Apri questo file index.html in locale e carica il file dalla sezione Import.
+      3) Per .xlsx il foglio predefinito e' "Copia di Risposte del modulo 1" (puoi selezionare un altro sheet).
+      4) Colonne richieste: "Cognome e nome", "Tipologia di Incarico:", opzionale "Indirizzo email".
+      5) Colonne score attese: AUTOEFF_TOT, AUTOEFF_MAT_EMO, AUTOEFF_FIN_AZI, AUTOEFF_FLU_REL,
+         AUTOEFF_ANA_CON, NPOQ-R, BIDR6_TOT, BIDR_SDE, BIDR_IM.
+      6) Labeling: modalita automatica (percentili 33/66 per colonna) oppure manuale per gruppi.
+    -->
+    <header>
+      <h1 class="title">Selezione IP/IPE/IPS Dashboard</h1>
+      <p class="subtitle">
+        App locale, nessun backend, nessuna chiamata di rete. I dati restano in memoria nel browser e puoi
+        cancellarli con un click.
+      </p>
+    </header>
+
+    <main>
+      <section class="panel" id="import">
+        <h2>Import</h2>
+        <div class="row">
+          <input id="fileInput" type="file" accept=".csv,.xlsx" aria-label="Import file" />
+          <div id="sheetPicker" class="hidden">
+            <label>
+              Sheet:
+              <select id="sheetSelect" aria-label="Sheet selection"></select>
+            </label>
+          </div>
+          <button class="btn" id="loadDemo">Load demo data</button>
+          <button class="btn ghost" id="resetData">Reset / Cancella dati</button>
+        </div>
+        <div id="importStatus" class="status hidden" role="status" aria-live="polite"></div>
+        <div id="preview" class="preview"></div>
+      </section>
+
+      <section class="panel" id="labeling">
+        <h2>Labeling rules</h2>
+        <p class="note">
+          I punteggi sono gia' presenti nelle colonne: l'app non ricalcola lo scoring, mostra solo i valori.
+        </p>
+        <div class="mode-toggle" role="radiogroup" aria-label="Modalita labeling">
+          <label><input type="radio" name="labelMode" value="auto" checked /> Auto (percentili)</label>
+          <label><input type="radio" name="labelMode" value="manual" /> Manuale (soglie per gruppo)</label>
+        </div>
+
+        <div id="autoPanel" class="mode-panel">
+          <h3>Auto per colonna (percentile 33/66)</h3>
+          <div id="autoRulesTable" class="table-wrap"></div>
+        </div>
+
+        <div id="manualPanel" class="mode-panel hidden">
+          <h3>Manuale per gruppi</h3>
+          <div id="manualRulesGrid" class="rules-grid"></div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn secondary" id="applyLabels">Apply labeling</button>
+          <span class="note">Le etichette mostrano testo + colore per accessibilita.</span>
+        </div>
+      </section>
+
+      <section class="panel" id="search">
+        <h2>Search</h2>
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search by Cognome e nome, Tipologia di Incarico, Indirizzo email"
+          aria-label="Search respondent"
+        />
+        <div id="searchResults" class="search-results"></div>
+      </section>
+
+      <section class="panel" id="dashboard">
+        <h2>Respondent dashboard</h2>
+        <div id="dashboardContent" class="empty">No respondent selected.</div>
+      </section>
+
+      <section class="panel" id="all">
+        <h2>All respondents</h2>
+        <div class="toolbar">
+          <label>
+            Sort by:
+            <select id="sortBy">
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="autoeff-desc">AUTOEFF_TOT (desc)</option>
+              <option value="autoeff-asc">AUTOEFF_TOT (asc)</option>
+            </select>
+          </label>
+          <label>
+            Filter role:
+            <select id="roleFilter">
+              <option value="all">All</option>
+            </select>
+          </label>
+          <button class="btn" id="exportAll">Export PDF (all respondents)</button>
+        </div>
+        <div id="allTable" style="margin-top: 12px;"></div>
+      </section>
+    </main>
+
+    <div class="print-root" id="printRoot" aria-hidden="true">
+      <div id="printSingle"></div>
+      <div id="printAll"></div>
+    </div>
+
+    <div class="footer-note">
+      PDF export uses the browser print dialog to preserve full offline usage. Use "Save as PDF" in your
+      browser. This app never sends data to the network.
+    </div>
+
+    <script>
+      const FIELD_NAMES = {
+        name: "Cognome e nome",
+        role: "Tipologia di Incarico:",
+        email: "Indirizzo email"
+      };
+
+      const SCORE_KEYS = [
+        "AUTOEFF_TOT",
+        "AUTOEFF_MAT_EMO",
+        "AUTOEFF_FIN_AZI",
+        "AUTOEFF_FLU_REL",
+        "AUTOEFF_ANA_CON",
+        "NPOQ-R",
+        "BIDR6_TOT",
+        "BIDR_SDE",
+        "BIDR_IM"
+      ];
+
+      const SCORE_INFO = {
+        AUTOEFF_TOT: { label: "Totale autoefficacia" },
+        AUTOEFF_MAT_EMO: { label: "Maturita emotiva" },
+        AUTOEFF_FIN_AZI: { label: "Finalizzazione dell'azione" },
+        AUTOEFF_FLU_REL: { label: "Fluidita relazionale" },
+        AUTOEFF_ANA_CON: { label: "Analisi del contesto" },
+        "NPOQ-R": { label: "Orientamento negativo al problema" },
+        BIDR6_TOT: { label: "Totale BIDR" },
+        BIDR_SDE: { label: "Auto-inganno positivo" },
+        BIDR_IM: { label: "Gestione dell'impressione" }
+      };
+
+      const RADAR_KEYS = SCORE_KEYS.filter((key) => key !== "AUTOEFF_TOT" && key !== "BIDR6_TOT");
+
+      const DEFAULT_SHEET = "Copia di Risposte del modulo 1";
+
+      const LABEL_COLORS = {
+        low: "#d6453d",
+        mid: "#d9a21b",
+        high: "#1c7c54",
+        na: "#999999"
+      };
+
+      const RADAR_COLORS = {
+        current: "#ef5b2a",
+        average: "#3d8ed6",
+        compare: "#1c7c54"
+      };
+
+      const MANUAL_GROUP_LABELS = {
+        AUTOEFF_TOT: "AUTOEFF Totale",
+        AUTOEFF_SUB: "AUTOEFF Sottoscale",
+        "NPOQ-R": "NPOQ-R",
+        BIDR_TOT: "BIDR-6 Totale",
+        BIDR_SUB: "BIDR-6 Sottoscale"
+      };
+
+      const MANUAL_GROUP_ORDER = ["AUTOEFF_TOT", "AUTOEFF_SUB", "NPOQ-R", "BIDR_TOT", "BIDR_SUB"];
+
+      const state = {
+        headers: [],
+        records: [],
+        schema: null,
+        computed: [],
+        labelMode: "auto",
+        manualRules: {},
+        autoThresholds: {},
+        radarAverages: {},
+        radarMax: 1,
+        sampleAverages: {},
+        currentIndex: null,
+        compareIndex: null,
+        showAllColumns: false,
+        xlsxMeta: null,
+        currentSheet: null,
+        originalTitle: null
+      };
+
+      const demoRows = [
+        [
+          "Cognome e nome",
+          "Tipologia di Incarico:",
+          "Indirizzo email",
+          "AUTOEFF_TOT",
+          "AUTOEFF_MAT_EMO",
+          "AUTOEFF_FIN_AZI",
+          "AUTOEFF_FLU_REL",
+          "AUTOEFF_ANA_CON",
+          "NPOQ-R",
+          "BIDR6_TOT",
+          "BIDR_SDE",
+          "BIDR_IM"
+        ],
+        [
+          "Rossi Giulia",
+          "IP - Incarico professionista",
+          "giulia.rossi@example.com",
+          92,
+          24,
+          26,
+          25,
+          23,
+          34,
+          75,
+          40,
+          38
+        ],
+        [
+          "Bianchi Marco",
+          "IPE - Incarico Professionista Esperto",
+          "marco.bianchi@example.com",
+          80,
+          18,
+          19,
+          17,
+          16,
+          24,
+          55,
+          28,
+          30
+        ],
+        [
+          "Conti Sara",
+          "IPS - Incarico Professionista Specialista",
+          "sara.conti@example.com",
+          50,
+          10,
+          12,
+          11,
+          9,
+          12,
+          35,
+          18,
+          16
+        ],
+        [
+          "Ferri Luca",
+          "IP - Incarico professionista",
+          "luca.ferri@example.com",
+          110,
+          28,
+          27,
+          26,
+          25,
+          40,
+          82,
+          42,
+          39
+        ],
+        [
+          "Neri Elena",
+          "IPE - Incarico Professionista Esperto",
+          "elena.neri@example.com",
+          60,
+          16,
+          18,
+          17,
+          15,
+          20,
+          46,
+          24,
+          22
+        ],
+        [
+          "Gallo Pietro",
+          "IPS - Incarico Professionista Specialista",
+          "pietro.gallo@example.com",
+          32,
+          8,
+          9,
+          7,
+          10,
+          15,
+          28,
+          12,
+          14
+        ],
+        [
+          "De Luca Marta",
+          "IP - Incarico professionista",
+          "marta.deluca@example.com",
+          88,
+          22,
+          21,
+          20,
+          22,
+          29,
+          68,
+          33,
+          35
+        ],
+        [
+          "Rinaldi Fabio",
+          "IPE - Incarico Professionista Esperto",
+          "fabio.rinaldi@example.com",
+          101,
+          23,
+          24,
+          25,
+          24,
+          31,
+          72,
+          36,
+          37
+        ],
+        [
+          "Greco Chiara",
+          "IPS - Incarico Professionista Specialista",
+          "chiara.greco@example.com",
+          56,
+          14,
+          13,
+          14,
+          12,
+          18,
+          43,
+          21,
+          20
+        ],
+        [
+          "Romano Elisa",
+          "IPE - Incarico Professionista Esperto",
+          "elisa.romano@example.com",
+          70,
+          19,
+          20,
+          18,
+          19,
+          26,
+          60,
+          30,
+          32
+        ]
+      ];
+
+      const fileInput = document.getElementById("fileInput");
+      const sheetPicker = document.getElementById("sheetPicker");
+      const sheetSelect = document.getElementById("sheetSelect");
+      const importStatus = document.getElementById("importStatus");
+      const preview = document.getElementById("preview");
+      const loadDemo = document.getElementById("loadDemo");
+      const resetData = document.getElementById("resetData");
+      const autoPanel = document.getElementById("autoPanel");
+      const manualPanel = document.getElementById("manualPanel");
+      const autoRulesTable = document.getElementById("autoRulesTable");
+      const manualRulesGrid = document.getElementById("manualRulesGrid");
+      const applyLabels = document.getElementById("applyLabels");
+      const searchInput = document.getElementById("searchInput");
+      const searchResults = document.getElementById("searchResults");
+      const dashboardContent = document.getElementById("dashboardContent");
+      const sortBy = document.getElementById("sortBy");
+      const roleFilter = document.getElementById("roleFilter");
+      const allTable = document.getElementById("allTable");
+      const exportAll = document.getElementById("exportAll");
+      const printRoot = document.getElementById("printRoot");
+      const printSingle = document.getElementById("printSingle");
+      const printAll = document.getElementById("printAll");
+
+      const palette = ["#ef5b2a", "#117a65", "#325d8a", "#b85c38", "#4d4d4d", "#c2a93c"];
+
+      function setStatus(message, isError) {
+        importStatus.textContent = message;
+        importStatus.classList.remove("hidden");
+        importStatus.classList.toggle("error", Boolean(isError));
+      }
+
+      function clearStatus() {
+        importStatus.classList.add("hidden");
+        importStatus.textContent = "";
+      }
+
+      function defaultManualRules() {
+        return {
+          AUTOEFF_TOT: [
+            { min: 24, max: 56, label: "Basso", color: LABEL_COLORS.low },
+            { min: 57, max: 88, label: "Medio", color: LABEL_COLORS.mid },
+            { min: 89, max: 120, label: "Alto", color: LABEL_COLORS.high }
+          ],
+          AUTOEFF_SUB: [
+            { min: 6, max: 14, label: "Basso", color: LABEL_COLORS.low },
+            { min: 15, max: 22, label: "Medio", color: LABEL_COLORS.mid },
+            { min: 23, max: 30, label: "Alto", color: LABEL_COLORS.high }
+          ],
+          "NPOQ-R": [
+            { min: 0, max: 18, label: "Basso", color: LABEL_COLORS.low },
+            { min: 19, max: 30, label: "Medio", color: LABEL_COLORS.mid },
+            { min: 31, max: 60, label: "Alto", color: LABEL_COLORS.high }
+          ],
+          BIDR_TOT: [
+            { min: 0, max: 43, label: "Basso", color: LABEL_COLORS.low },
+            { min: 44, max: 69, label: "Medio", color: LABEL_COLORS.mid },
+            { min: 70, max: 120, label: "Alto", color: LABEL_COLORS.high }
+          ],
+          BIDR_SUB: [
+            { min: 8, max: 21, label: "Basso", color: LABEL_COLORS.low },
+            { min: 22, max: 35, label: "Medio", color: LABEL_COLORS.mid },
+            { min: 36, max: 48, label: "Alto", color: LABEL_COLORS.high }
+          ]
+        };
+      }
+
+      function resetState() {
+        state.headers = [];
+        state.records = [];
+        state.schema = null;
+        state.computed = [];
+        state.autoThresholds = {};
+        state.radarAverages = {};
+        state.radarMax = 1;
+        state.sampleAverages = {};
+        state.currentIndex = null;
+        state.compareIndex = null;
+        state.showAllColumns = false;
+        state.xlsxMeta = null;
+        state.currentSheet = null;
+        preview.innerHTML = "";
+        searchResults.innerHTML = "";
+        dashboardContent.textContent = "No respondent selected.";
+        allTable.innerHTML = "";
+        roleFilter.innerHTML = "<option value=\"all\">All</option>";
+        autoRulesTable.innerHTML = "";
+        manualRulesGrid.innerHTML = "";
+        sheetSelect.innerHTML = "";
+        sheetPicker.classList.add("hidden");
+        clearStatus();
+      }
+
+      function parseNumber(value) {
+        if (value === null || value === undefined) return null;
+        if (typeof value === "number" && !Number.isNaN(value)) return value;
+        const cleaned = String(value).trim();
+        if (!cleaned) return null;
+        const hasComma = cleaned.includes(",");
+        const hasDot = cleaned.includes(".");
+        let normalized = cleaned;
+        if (hasComma && hasDot) {
+          normalized = cleaned.replace(/,/g, "");
+        } else if (hasComma && !hasDot) {
+          normalized = cleaned.replace(/,/g, ".");
+        }
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : null;
+      }
+
+      function sanitizeFileName(name) {
+        const safe = String(name || "respondent")
+          .trim()
+          .replace(/[^a-zA-Z0-9_-]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+        return safe.slice(0, 60) || "respondent";
+      }
+
+      function detectDelimiter(text) {
+        const sample = text.split(/\r?\n/)[0] || "";
+        const candidates = [",", ";", "\t", "|"];
+        let best = ",";
+        let max = 0;
+        candidates.forEach((delimiter) => {
+          const count = sample.split(delimiter).length - 1;
+          if (count > max) {
+            max = count;
+            best = delimiter;
+          }
+        });
+        return best;
+      }
+
+      function parseCSV(text) {
+        const delimiter = detectDelimiter(text);
+        const rows = [];
+        let row = [];
+        let value = "";
+        let inQuotes = false;
+        const input = text.replace(/^\uFEFF/, "");
+
+        for (let i = 0; i < input.length; i += 1) {
+          const char = input[i];
+          const next = input[i + 1];
+
+          if (char === '"') {
+            if (inQuotes && next === '"') {
+              value += '"';
+              i += 1;
+            } else {
+              inQuotes = !inQuotes;
+            }
+            continue;
+          }
+
+          if (!inQuotes && char === delimiter) {
+            row.push(value);
+            value = "";
+            continue;
+          }
+
+          if (!inQuotes && (char === "\n" || char === "\r")) {
+            if (char === "\r" && next === "\n") {
+              i += 1;
+            }
+            row.push(value);
+            if (row.length > 1 || row[0] !== "") {
+              rows.push(row);
+            }
+            row = [];
+            value = "";
+            continue;
+          }
+
+          value += char;
+        }
+
+        row.push(value);
+        if (row.length > 1 || row[0] !== "") {
+          rows.push(row);
+        }
+
+        return rows;
+      }
+
+      function readUInt32LE(data, offset) {
+        return (
+          data[offset] |
+          (data[offset + 1] << 8) |
+          (data[offset + 2] << 16) |
+          (data[offset + 3] << 24)
+        ) >>> 0;
+      }
+
+      function readUInt16LE(data, offset) {
+        return data[offset] | (data[offset + 1] << 8);
+      }
+
+      function readString(data, offset, length) {
+        return new TextDecoder("utf-8").decode(data.slice(offset, offset + length));
+      }
+
+      function findEndOfCentralDirectory(data) {
+        for (let i = data.length - 22; i >= 0; i -= 1) {
+          if (readUInt32LE(data, i) === 0x06054b50) {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      function parseZipEntries(buffer) {
+        const data = new Uint8Array(buffer);
+        const eocdIndex = findEndOfCentralDirectory(data);
+        if (eocdIndex === -1) {
+          throw new Error("Invalid XLSX (zip) structure");
+        }
+        const cdSize = readUInt32LE(data, eocdIndex + 12);
+        const cdOffset = readUInt32LE(data, eocdIndex + 16);
+        let ptr = cdOffset;
+        const entries = new Map();
+
+        while (ptr < cdOffset + cdSize) {
+          if (readUInt32LE(data, ptr) !== 0x02014b50) break;
+          const compMethod = readUInt16LE(data, ptr + 10);
+          const compSize = readUInt32LE(data, ptr + 20);
+          const uncompSize = readUInt32LE(data, ptr + 24);
+          const fileNameLen = readUInt16LE(data, ptr + 28);
+          const extraLen = readUInt16LE(data, ptr + 30);
+          const commentLen = readUInt16LE(data, ptr + 32);
+          const localOffset = readUInt32LE(data, ptr + 42);
+          const name = readString(data, ptr + 46, fileNameLen);
+
+          const localNameLen = readUInt16LE(data, localOffset + 26);
+          const localExtraLen = readUInt16LE(data, localOffset + 28);
+          const dataStart = localOffset + 30 + localNameLen + localExtraLen;
+          const compData = data.slice(dataStart, dataStart + compSize);
+
+          entries.set(name, { compMethod, compData, uncompSize });
+          ptr += 46 + fileNameLen + extraLen + commentLen;
+        }
+        return entries;
+      }
+
+      async function inflateRaw(data) {
+        if (typeof DecompressionStream === "undefined") {
+          throw new Error("DecompressionStream not supported in this browser");
+        }
+        const ds = new DecompressionStream("deflate-raw");
+        const stream = new Response(new Blob([data]).stream().pipeThrough(ds));
+        const buffer = await stream.arrayBuffer();
+        return new TextDecoder("utf-8").decode(buffer);
+      }
+
+      async function unzipEntryText(entry) {
+        if (entry.compMethod === 0) {
+          return new TextDecoder("utf-8").decode(entry.compData);
+        }
+        if (entry.compMethod === 8) {
+          return inflateRaw(entry.compData);
+        }
+        throw new Error("Unsupported compression method in XLSX");
+      }
+
+      function parseXml(text) {
+        return new DOMParser().parseFromString(text, "application/xml");
+      }
+
+      function columnRefToIndex(ref) {
+        const letters = ref.replace(/\d+/g, "");
+        let index = 0;
+        for (let i = 0; i < letters.length; i += 1) {
+          index = index * 26 + (letters.charCodeAt(i) - 64);
+        }
+        return index - 1;
+      }
+
+      async function parseXlsxMeta(arrayBuffer) {
+        const entries = parseZipEntries(arrayBuffer);
+
+        const workbookEntry = entries.get("xl/workbook.xml");
+        if (!workbookEntry) throw new Error("Missing workbook.xml");
+        const workbookXml = parseXml(await unzipEntryText(workbookEntry));
+
+        const relsEntry = entries.get("xl/_rels/workbook.xml.rels");
+        if (!relsEntry) throw new Error("Missing workbook rels");
+        const relsXml = parseXml(await unzipEntryText(relsEntry));
+
+        const rels = Array.from(relsXml.getElementsByTagName("Relationship"));
+        const relMap = new Map();
+        rels.forEach((rel) => {
+          const id = rel.getAttribute("Id");
+          const target = rel.getAttribute("Target");
+          if (id && target) relMap.set(id, target);
+        });
+
+        const sheets = Array.from(workbookXml.getElementsByTagName("sheet"))
+          .map((sheet) => {
+            const name = sheet.getAttribute("name") || "Sheet";
+            const relId = sheet.getAttribute("r:id");
+            const target = relId ? relMap.get(relId) : null;
+            const path = target ? `xl/${target.replace(/^\//, "")}` : null;
+            return { name, path };
+          })
+          .filter((sheet) => sheet.path);
+
+        const sharedEntry = entries.get("xl/sharedStrings.xml");
+        const sharedStrings = [];
+        if (sharedEntry) {
+          const sharedXml = parseXml(await unzipEntryText(sharedEntry));
+          Array.from(sharedXml.getElementsByTagName("si")).forEach((si) => {
+            const parts = [];
+            Array.from(si.getElementsByTagName("t")).forEach((t) => parts.push(t.textContent || ""));
+            sharedStrings.push(parts.join(""));
+          });
+        }
+
+        return { entries, sheets, sharedStrings };
+      }
+
+      async function parseXlsxSheet(sheetName) {
+        if (!state.xlsxMeta) throw new Error("XLSX meta not loaded");
+        const sheet = state.xlsxMeta.sheets.find((item) => item.name === sheetName);
+        if (!sheet) throw new Error(`Sheet "${sheetName}" not found`);
+        const sheetEntry = state.xlsxMeta.entries.get(sheet.path);
+        if (!sheetEntry) throw new Error("Sheet not found in archive");
+        const sheetXml = parseXml(await unzipEntryText(sheetEntry));
+
+        const rows = [];
+        Array.from(sheetXml.getElementsByTagName("row")).forEach((rowNode) => {
+          const rowIndexRaw = Number(rowNode.getAttribute("r"));
+          const rowIndex = Number.isFinite(rowIndexRaw) ? rowIndexRaw - 1 : rows.length;
+          const row = [];
+          Array.from(rowNode.getElementsByTagName("c")).forEach((cell) => {
+            const ref = cell.getAttribute("r") || "";
+            const colIndex = ref ? columnRefToIndex(ref) : row.length;
+            if (colIndex < 0) return;
+            const type = cell.getAttribute("t");
+            let value = "";
+            if (type === "s") {
+              const v = cell.getElementsByTagName("v")[0];
+              const idx = v ? Number(v.textContent) : -1;
+              value = state.xlsxMeta.sharedStrings[idx] || "";
+            } else if (type === "inlineStr") {
+              const t = cell.getElementsByTagName("t")[0];
+              value = t ? t.textContent || "" : "";
+            } else if (type === "b") {
+              const v = cell.getElementsByTagName("v")[0];
+              value = v && v.textContent === "1" ? "TRUE" : "FALSE";
+            } else {
+              const v = cell.getElementsByTagName("v")[0];
+              value = v ? v.textContent || "" : "";
+            }
+            row[colIndex] = value;
+          });
+          rows[rowIndex] = row;
+        });
+
+        return rows.filter((row) => row && row.some((cell) => cell !== undefined && cell !== ""));
+      }
+
+      function sanitizeHeaders(headers) {
+        const seen = new Map();
+        return headers.map((header) => {
+          const clean = header ? String(header).trim() : "";
+          if (!clean) return "Column";
+          const count = seen.get(clean) || 0;
+          seen.set(clean, count + 1);
+          return count ? `${clean}_${count + 1}` : clean;
+        });
+      }
+
+      function normalizeHeader(header) {
+        return String(header || "")
+          .trim()
+          .replace(/\s+/g, " ")
+          .toLowerCase();
+      }
+
+      function resolveHeader(headers, target) {
+        const normalized = normalizeHeader(target);
+        return headers.find((header) => normalizeHeader(header) === normalized) || null;
+      }
+
+      function buildRecords(rows) {
+        if (!rows.length) throw new Error("Empty dataset");
+        const headers = sanitizeHeaders(rows[0]);
+        const records = rows.slice(1).map((row) => {
+          const record = {};
+          headers.forEach((header, index) => {
+            record[header] = row[index] !== undefined ? row[index] : "";
+          });
+          return record;
+        });
+        return { headers, records };
+      }
+
+      function buildSchema(headers) {
+        const nameField = resolveHeader(headers, FIELD_NAMES.name);
+        const roleField = resolveHeader(headers, FIELD_NAMES.role);
+        const emailField = resolveHeader(headers, FIELD_NAMES.email);
+
+        const scoreDefs = SCORE_KEYS.map((key) => ({
+          key,
+          header: resolveHeader(headers, key)
+        }));
+
+        const missingScores = scoreDefs.filter((def) => !def.header).map((def) => def.key);
+        const missingFields = [];
+        if (!nameField) missingFields.push(FIELD_NAMES.name);
+
+        return { nameField, roleField, emailField, scoreDefs, missingScores, missingFields };
+      }
+
+      function renderPreview(headers, records) {
+        preview.innerHTML = "";
+        const summary = document.createElement("p");
+        summary.textContent = `Rows: ${records.length} | Columns: ${headers.length}`;
+        preview.appendChild(summary);
+
+        if (state.currentSheet) {
+          const sheetInfo = document.createElement("p");
+          sheetInfo.className = "note";
+          sheetInfo.textContent = `Sheet in uso: ${state.currentSheet}`;
+          preview.appendChild(sheetInfo);
+        }
+
+        if (state.schema) {
+          if (state.schema.missingFields.length) {
+            const warn = document.createElement("p");
+            warn.className = "note";
+            warn.textContent = `Missing required columns: ${state.schema.missingFields.join(", ")}`;
+            preview.appendChild(warn);
+          }
+          if (state.schema.missingScores.length) {
+            const warnScores = document.createElement("p");
+            warnScores.className = "note";
+            warnScores.textContent = `Missing score columns: ${state.schema.missingScores.join(", ")}`;
+            preview.appendChild(warnScores);
+          }
+        }
+
+        if (!records.length) return;
+      }
+
+      function quantile(values, q) {
+        if (!values.length) return null;
+        const sorted = [...values].sort((a, b) => a - b);
+        const pos = (sorted.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        if (sorted[base + 1] !== undefined) {
+          return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+        }
+        return sorted[base];
+      }
+
+      function groupForScore(key) {
+        if (key === "AUTOEFF_TOT") return "AUTOEFF_TOT";
+        if (key.startsWith("AUTOEFF_")) return "AUTOEFF_SUB";
+        if (key === "NPOQ-R") return "NPOQ-R";
+        if (key === "BIDR6_TOT") return "BIDR_TOT";
+        if (key.startsWith("BIDR_")) return "BIDR_SUB";
+        return "OTHER";
+      }
+
+      function computeAutoThresholds() {
+        const thresholds = {};
+        if (!state.schema) return thresholds;
+        state.schema.scoreDefs.forEach((def) => {
+          if (!def.header) return;
+          const values = state.records.map((record) => parseNumber(record[def.header])).filter((v) => v !== null);
+          thresholds[def.key] = {
+            p33: quantile(values, 0.33),
+            p66: quantile(values, 0.66)
+          };
+        });
+        state.autoThresholds = thresholds;
+      }
+
+      function assignLabel(value, key) {
+        if (value === null || value === undefined || Number.isNaN(value)) {
+          return { label: "N/A", color: LABEL_COLORS.na };
+        }
+
+        if (state.labelMode === "auto") {
+          const thresholds = state.autoThresholds[key];
+          if (!thresholds || thresholds.p33 === null || thresholds.p66 === null) {
+            return { label: "N/A", color: LABEL_COLORS.na };
+          }
+          if (value <= thresholds.p33) {
+            return { label: "Basso", color: LABEL_COLORS.low };
+          }
+          if (value <= thresholds.p66) {
+            return { label: "Medio", color: LABEL_COLORS.mid };
+          }
+          return { label: "Alto", color: LABEL_COLORS.high };
+        }
+
+        const group = groupForScore(key);
+        const rules = state.manualRules[group] || [];
+        for (const rule of rules) {
+          if (value >= rule.min && value <= rule.max) {
+            return { label: rule.label, color: rule.color };
+          }
+        }
+        return { label: "Out of range", color: LABEL_COLORS.na };
+      }
+
+      function getScoreLabel(key) {
+        return SCORE_INFO[key] ? SCORE_INFO[key].label : key;
+      }
+
+      function computeRadarAverages() {
+        const averages = {};
+        RADAR_KEYS.forEach((key) => {
+          let sum = 0;
+          let count = 0;
+          state.computed.forEach((entry) => {
+            const value = entry.scores[key];
+            if (value !== null && value !== undefined) {
+              sum += value;
+              count += 1;
+            }
+          });
+          averages[key] = count ? sum / count : null;
+        });
+        state.radarAverages = averages;
+      }
+
+      function computeRadarMax() {
+        let maxValue = 0;
+        RADAR_KEYS.forEach((key) => {
+          state.computed.forEach((entry) => {
+            const value = entry.scores[key];
+            if (value !== null && value !== undefined) {
+              if (value > maxValue) maxValue = value;
+            }
+          });
+        });
+        state.radarMax = maxValue > 0 ? maxValue : 1;
+      }
+
+      function computeSampleAverages() {
+        const averages = {};
+        SCORE_KEYS.forEach((key) => {
+          let sum = 0;
+          let count = 0;
+          state.computed.forEach((entry) => {
+            const value = entry.scores[key];
+            if (value !== null && value !== undefined) {
+              sum += value;
+              count += 1;
+            }
+          });
+          averages[key] = count ? sum / count : null;
+        });
+        state.sampleAverages = averages;
+      }
+
+      function computeScores() {
+        if (!state.schema) return;
+        if (state.labelMode === "auto") {
+          computeAutoThresholds();
+        }
+
+        state.computed = state.records.map((record, index) => {
+          const scores = {};
+          const labels = {};
+          state.schema.scoreDefs.forEach((def) => {
+            const value = def.header ? parseNumber(record[def.header]) : null;
+            scores[def.key] = value;
+            labels[def.key] = assignLabel(value, def.key);
+          });
+          return { index, record, scores, labels };
+        });
+
+        computeRadarAverages();
+        computeRadarMax();
+        computeSampleAverages();
+        renderAutoRulesTable();
+        renderSearchResults();
+        renderAllRespondents();
+        if (state.currentIndex !== null) {
+          renderDashboard(state.currentIndex);
+        }
+      }
+
+      function renderAutoRulesTable() {
+        autoRulesTable.innerHTML = "";
+        if (!state.schema || !state.schema.scoreDefs.length) {
+          autoRulesTable.textContent = "Load data to view percentiles.";
+          return;
+        }
+
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        ["Score", "P33", "P66"].forEach((title) => {
+          const th = document.createElement("th");
+          th.textContent = title;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        state.schema.scoreDefs.forEach((def) => {
+          const row = document.createElement("tr");
+          const name = document.createElement("td");
+          name.textContent = def.key;
+          const p33 = document.createElement("td");
+          const p66 = document.createElement("td");
+          const thresholds = state.autoThresholds[def.key] || {};
+          p33.textContent = thresholds.p33 !== null && thresholds.p33 !== undefined ? thresholds.p33.toFixed(2) : "-";
+          p66.textContent = thresholds.p66 !== null && thresholds.p66 !== undefined ? thresholds.p66.toFixed(2) : "-";
+          row.appendChild(name);
+          row.appendChild(p33);
+          row.appendChild(p66);
+          tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+        autoRulesTable.appendChild(table);
+      }
+
+      function renderManualRules() {
+        manualRulesGrid.innerHTML = "";
+        const groups = MANUAL_GROUP_ORDER.filter((group) => state.manualRules[group]);
+        groups.forEach((group) => {
+          const card = document.createElement("div");
+          card.className = "rules-card";
+          const title = document.createElement("h3");
+          title.textContent = MANUAL_GROUP_LABELS[group] || group;
+          card.appendChild(title);
+
+          const table = document.createElement("table");
+          const thead = document.createElement("thead");
+          const headerRow = document.createElement("tr");
+          ["Min", "Max", "Label", "Color"].forEach((label) => {
+            const th = document.createElement("th");
+            th.textContent = label;
+            headerRow.appendChild(th);
+          });
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          const tbody = document.createElement("tbody");
+          state.manualRules[group].forEach((rule, index) => {
+            const tr = document.createElement("tr");
+            ["min", "max", "label", "color"].forEach((field) => {
+              const td = document.createElement("td");
+              const input = document.createElement("input");
+              input.type = field === "color" ? "color" : field === "label" ? "text" : "number";
+              input.value = rule[field];
+              input.setAttribute("data-group", group);
+              input.setAttribute("data-index", index);
+              input.setAttribute("data-field", field);
+              td.appendChild(input);
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          table.appendChild(tbody);
+          card.appendChild(table);
+          manualRulesGrid.appendChild(card);
+        });
+      }
+
+      function createLegendItem(text, color) {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.style.color = color;
+        const swatch = document.createElement("span");
+        swatch.className = "legend-swatch";
+        const label = document.createElement("span");
+        label.textContent = text;
+        item.appendChild(swatch);
+        item.appendChild(label);
+        return item;
+      }
+
+      function buildRadarLegend(currentIndex) {
+        const legend = document.createElement("div");
+        legend.className = "legend";
+        legend.appendChild(createLegendItem("Rispondente", RADAR_COLORS.current));
+        legend.appendChild(createLegendItem("Media", RADAR_COLORS.average));
+        const compareEntry = getCompareEntry();
+        if (compareEntry && compareEntry.index !== currentIndex) {
+          const compareName = getDisplayName(compareEntry.record);
+          legend.appendChild(createLegendItem(`Confronto: ${compareName}`, RADAR_COLORS.compare));
+        }
+        return legend;
+      }
+
+      function buildCompareControl(currentIndex) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "compare-wrapper";
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "btn ghost small";
+        const compareEntry = getCompareEntry();
+        toggle.textContent =
+          compareEntry && compareEntry.index !== currentIndex
+            ? `Confronto: ${getDisplayName(compareEntry.record)}`
+            : "Confronta rispondente";
+
+        const panel = document.createElement("div");
+        panel.className = "compare-panel hidden";
+
+        const search = document.createElement("input");
+        search.type = "search";
+        search.placeholder = "Cerca rispondente";
+
+        const list = document.createElement("div");
+        list.className = "compare-list";
+
+        const clear = document.createElement("button");
+        clear.type = "button";
+        clear.className = "btn ghost small";
+        clear.textContent = "Pulisci confronto";
+
+        function renderList() {
+          list.innerHTML = "";
+          const query = search.value.trim().toLowerCase();
+          const results = state.computed.filter((entry) => entry.index !== currentIndex);
+          const filtered = results.filter((entry) => getSearchText(entry.record).includes(query));
+          if (!filtered.length) {
+            const empty = document.createElement("div");
+            empty.className = "empty";
+            empty.textContent = "Nessun rispondente trovato.";
+            list.appendChild(empty);
+            return;
+          }
+          filtered.slice(0, 20).forEach((entry) => {
+            const item = document.createElement("div");
+            item.className = "compare-item";
+            if (state.compareIndex === entry.index) item.classList.add("active");
+            item.textContent = `${getDisplayName(entry.record)}${getRole(entry.record) ? ` - ${getRole(entry.record)}` : ""}`;
+            item.addEventListener("click", () => {
+              state.compareIndex = entry.index;
+              renderDashboard(currentIndex);
+            });
+            list.appendChild(item);
+          });
+        }
+
+        toggle.addEventListener("click", () => {
+          panel.classList.toggle("hidden");
+          if (!panel.classList.contains("hidden")) {
+            search.focus();
+            renderList();
+          }
+        });
+
+        search.addEventListener("input", renderList);
+
+        clear.addEventListener("click", () => {
+          state.compareIndex = null;
+          renderDashboard(currentIndex);
+        });
+
+        panel.appendChild(search);
+        panel.appendChild(list);
+        panel.appendChild(clear);
+        wrapper.appendChild(toggle);
+        wrapper.appendChild(panel);
+
+        return wrapper;
+      }
+
+      function readManualRulesFromDom() {
+        const inputs = Array.from(manualRulesGrid.querySelectorAll("input"));
+        inputs.forEach((input) => {
+          const group = input.getAttribute("data-group");
+          const index = Number(input.getAttribute("data-index"));
+          const field = input.getAttribute("data-field");
+          if (!state.manualRules[group] || !state.manualRules[group][index]) return;
+          if (field === "label" || field === "color") {
+            state.manualRules[group][index][field] = input.value;
+          } else {
+            const value = Number(input.value);
+            state.manualRules[group][index][field] = Number.isFinite(value) ? value : 0;
+          }
+        });
+      }
+
+      function getDisplayName(record) {
+        if (!state.schema) return "Unknown";
+        const nameField = state.schema.nameField;
+        if (record && nameField && record[nameField]) return String(record[nameField]);
+        if (record && state.schema.emailField && record[state.schema.emailField]) return String(record[state.schema.emailField]);
+        return "Unknown";
+      }
+
+      function getRole(record) {
+        if (!state.schema || !state.schema.roleField) return "";
+        return record[state.schema.roleField] || "";
+      }
+
+      function getEmail(record) {
+        if (!state.schema || !state.schema.emailField) return "";
+        return record[state.schema.emailField] || "";
+      }
+
+      function getSearchText(record) {
+        const parts = [];
+        if (state.schema && state.schema.nameField) parts.push(record[state.schema.nameField] || "");
+        if (state.schema && state.schema.roleField) parts.push(record[state.schema.roleField] || "");
+        if (state.schema && state.schema.emailField) parts.push(record[state.schema.emailField] || "");
+        return parts.join(" ").toLowerCase();
+      }
+
+      function renderSearchResults() {
+        searchResults.innerHTML = "";
+        if (!state.computed.length) {
+          searchResults.innerHTML = "<div class=\"empty\">Load data to search.</div>";
+          return;
+        }
+        const query = searchInput.value.trim().toLowerCase();
+        const results = state.computed.filter((entry) => getSearchText(entry.record).includes(query));
+        results.slice(0, 8).forEach((entry) => {
+          const item = document.createElement("div");
+          item.className = "result-item";
+          item.tabIndex = 0;
+          const name = document.createElement("div");
+          name.textContent = getDisplayName(entry.record);
+          const meta = document.createElement("small");
+          const role = getRole(entry.record);
+          meta.textContent = role ? `Role: ${role}` : "";
+          item.appendChild(name);
+          item.appendChild(meta);
+          item.addEventListener("click", () => {
+            state.currentIndex = entry.index;
+            renderDashboard(entry.index);
+          });
+          item.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              state.currentIndex = entry.index;
+              renderDashboard(entry.index);
+            }
+          });
+          searchResults.appendChild(item);
+        });
+      }
+
+      function createScoreCard(title, value, labelData) {
+        const card = document.createElement("div");
+        card.className = "score-card";
+        const titleEl = document.createElement("div");
+        titleEl.className = "score-title";
+        titleEl.textContent = title;
+        const subtitle = document.createElement("div");
+        subtitle.className = "score-subtitle";
+        subtitle.textContent = SCORE_INFO[title] ? SCORE_INFO[title].label : "";
+        const valueEl = document.createElement("div");
+        valueEl.className = "score-value";
+        valueEl.textContent = value !== null && value !== undefined ? value.toFixed(2) : "N/A";
+        const pill = document.createElement("div");
+        pill.className = "pill";
+        pill.style.color = labelData.color;
+        const dot = document.createElement("span");
+        dot.className = "pill-dot";
+        const label = document.createElement("span");
+        label.className = "label-text";
+        label.textContent = labelData.label;
+        pill.appendChild(dot);
+        pill.appendChild(label);
+        card.appendChild(titleEl);
+        if (subtitle.textContent) {
+          card.appendChild(subtitle);
+        }
+        card.appendChild(valueEl);
+        card.appendChild(pill);
+        return card;
+      }
+
+      function createSampleAverageBar() {
+        const bar = document.createElement("div");
+        bar.className = "sample-averages-bar";
+        const header = document.createElement("div");
+        header.className = "sample-averages-header";
+        const titleEl = document.createElement("div");
+        titleEl.className = "sample-averages-title";
+        titleEl.textContent = "Medie campione";
+        const subtitle = document.createElement("div");
+        subtitle.className = "sample-averages-subtitle";
+        subtitle.textContent = "Tutte le scale";
+        header.appendChild(titleEl);
+        header.appendChild(subtitle);
+
+        const list = document.createElement("div");
+        list.className = "sample-averages-items";
+
+        SCORE_KEYS.forEach((key) => {
+          const item = document.createElement("div");
+          item.className = "sample-average-item";
+          const code = document.createElement("div");
+          code.className = "sample-average-code";
+          code.textContent = key;
+          const label = document.createElement("div");
+          label.className = "sample-average-label";
+          label.textContent = getScoreLabel(key);
+          const value = state.sampleAverages[key];
+          const valueEl = document.createElement("div");
+          valueEl.className = "sample-average-value";
+          valueEl.textContent = value !== null && value !== undefined ? value.toFixed(2) : "N/A";
+          item.appendChild(code);
+          item.appendChild(label);
+          item.appendChild(valueEl);
+          list.appendChild(item);
+        });
+
+        bar.appendChild(header);
+        bar.appendChild(list);
+        return bar;
+      }
+
+      function renderDashboard(index) {
+        const entry = state.computed.find((item) => item.index === index);
+        if (!entry) {
+          dashboardContent.textContent = "No respondent selected.";
+          return;
+        }
+
+        dashboardContent.innerHTML = "";
+        const header = document.createElement("div");
+        const title = document.createElement("h3");
+        title.textContent = getDisplayName(entry.record);
+        header.appendChild(title);
+
+        const role = getRole(entry.record);
+        if (role) {
+          const roleEl = document.createElement("p");
+          roleEl.className = "note";
+          roleEl.textContent = `Tipologia di Incarico: ${role}`;
+          header.appendChild(roleEl);
+        }
+
+        const exportRow = document.createElement("div");
+        exportRow.className = "toolbar";
+        const exportBtn = document.createElement("button");
+        exportBtn.className = "btn";
+        exportBtn.textContent = "Export PDF (current respondent)";
+        exportBtn.addEventListener("click", () => exportPdfSingle(entry));
+        exportRow.appendChild(exportBtn);
+        header.appendChild(exportRow);
+
+        dashboardContent.appendChild(header);
+
+        const scoreGrid = document.createElement("div");
+        scoreGrid.className = "dashboard-grid";
+        state.schema.scoreDefs.forEach((def) => {
+          scoreGrid.appendChild(createScoreCard(def.key, entry.scores[def.key], entry.labels[def.key]));
+        });
+        dashboardContent.appendChild(scoreGrid);
+        dashboardContent.appendChild(createSampleAverageBar());
+
+        const chartGrid = document.createElement("div");
+        chartGrid.className = "chart-grid";
+
+        const barCard = document.createElement("div");
+        barCard.className = "chart-card";
+        const barTitle = document.createElement("strong");
+        barTitle.textContent = "Bar chart";
+        const barCanvas = document.createElement("canvas");
+        barCanvas.id = "barChart";
+        barCard.appendChild(barTitle);
+        barCard.appendChild(barCanvas);
+        chartGrid.appendChild(barCard);
+
+        const radarCard = document.createElement("div");
+        radarCard.className = "chart-card";
+        const radarHeader = document.createElement("div");
+        radarHeader.className = "radar-header";
+        const radarTitleWrap = document.createElement("div");
+        const radarTitle = document.createElement("strong");
+        radarTitle.textContent = "Radar chart";
+        radarTitleWrap.appendChild(radarTitle);
+        radarTitleWrap.appendChild(buildRadarLegend(entry.index));
+        radarHeader.appendChild(radarTitleWrap);
+        radarHeader.appendChild(buildCompareControl(entry.index));
+        const radarCanvas = document.createElement("canvas");
+        radarCanvas.id = "radarChart";
+        radarCard.appendChild(radarHeader);
+        radarCard.appendChild(radarCanvas);
+        chartGrid.appendChild(radarCard);
+
+        dashboardContent.appendChild(chartGrid);
+
+        const metaTitle = document.createElement("h3");
+        metaTitle.textContent = "Metadata";
+        dashboardContent.appendChild(metaTitle);
+
+        const toggleRow = document.createElement("div");
+        toggleRow.className = "toolbar";
+        const toggleLabel = document.createElement("label");
+        const toggleInput = document.createElement("input");
+        toggleInput.type = "checkbox";
+        toggleInput.checked = state.showAllColumns;
+        toggleInput.addEventListener("change", () => {
+          state.showAllColumns = toggleInput.checked;
+          renderDashboard(index);
+        });
+        toggleLabel.appendChild(toggleInput);
+        toggleLabel.appendChild(document.createTextNode(" Mostra tutte le colonne"));
+        toggleRow.appendChild(toggleLabel);
+        dashboardContent.appendChild(toggleRow);
+
+        const metaList = document.createElement("div");
+        metaList.className = "meta-list";
+        const fields = [];
+        if (state.schema.roleField) fields.push(state.schema.roleField);
+        if (state.schema.emailField) fields.push(state.schema.emailField);
+
+        if (state.showAllColumns) {
+          const scoreHeaders = state.schema.scoreDefs.map((def) => def.header).filter(Boolean);
+          state.headers.forEach((header) => {
+            if (header === state.schema.nameField) return;
+            if (scoreHeaders.includes(header)) return;
+            if (!fields.includes(header)) fields.push(header);
+          });
+        }
+
+        if (!fields.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No metadata available.";
+          metaList.appendChild(empty);
+        } else {
+          fields.forEach((field) => {
+            const item = document.createElement("div");
+            item.className = "meta-item";
+            const label = document.createElement("strong");
+            label.textContent = field;
+            const value = document.createElement("span");
+            value.textContent = entry.record[field] || "";
+            item.appendChild(label);
+            item.appendChild(value);
+            metaList.appendChild(item);
+          });
+        }
+        dashboardContent.appendChild(metaList);
+
+        requestAnimationFrame(() => {
+          drawCharts(entry);
+        });
+      }
+
+      function setupCanvas(canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const { width, height } = canvas.getBoundingClientRect();
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return ctx;
+      }
+
+      function getCompareEntry() {
+        if (state.compareIndex === null) return null;
+        return state.computed.find((item) => item.index === state.compareIndex) || null;
+      }
+
+      function buildRadarSeries(entry) {
+        const labels = RADAR_KEYS.map((key) => getScoreLabel(key));
+        const series = [];
+
+        const averageValues = RADAR_KEYS.map((key) => state.radarAverages[key]);
+        if (averageValues.some((value) => value !== null && value !== undefined)) {
+          series.push({
+            label: "Media",
+            color: RADAR_COLORS.average,
+            fill: 0.16,
+            values: averageValues.map((value) => value ?? 0)
+          });
+        }
+
+        const compareEntry = getCompareEntry();
+        if (compareEntry && compareEntry.index !== entry.index) {
+          const compareValues = RADAR_KEYS.map((key) => compareEntry.scores[key]);
+          series.push({
+            label: "Confronto",
+            color: RADAR_COLORS.compare,
+            fill: 0.12,
+            values: compareValues.map((value) => value ?? 0)
+          });
+        }
+
+        const primaryValues = RADAR_KEYS.map((key) => entry.scores[key]);
+        series.push({
+          label: "Rispondente",
+          color: RADAR_COLORS.current,
+          fill: 0.22,
+          values: primaryValues.map((value) => value ?? 0)
+        });
+
+        return { labels, series, compareEntry };
+      }
+
+      function drawCharts(entry) {
+        const barKeys = SCORE_KEYS;
+        const barLabels = barKeys.map((key) => getScoreLabel(key));
+        const barValues = barKeys.map((key) => (entry.scores[key] !== null ? entry.scores[key] : 0));
+        const barCanvas = document.getElementById("barChart");
+        if (barCanvas) drawBarChart(barCanvas, barLabels, barValues);
+
+        const radarCanvas = document.getElementById("radarChart");
+        if (radarCanvas) {
+          const { labels, series } = buildRadarSeries(entry);
+          drawRadarChart(radarCanvas, labels, series);
+        }
+      }
+
+      function hexToRgba(hex, alpha) {
+        const normalized = String(hex || "").replace("#", "");
+        if (normalized.length !== 3 && normalized.length !== 6) {
+          return `rgba(0,0,0,${alpha})`;
+        }
+        const full = normalized.length === 3 ? normalized.split("").map((c) => c + c).join("") : normalized;
+        const r = parseInt(full.slice(0, 2), 16);
+        const g = parseInt(full.slice(2, 4), 16);
+        const b = parseInt(full.slice(4, 6), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+
+      function wrapText(ctx, text, maxWidth) {
+        const words = String(text).split(" ");
+        const lines = [];
+        let line = "";
+        words.forEach((word) => {
+          const testLine = line ? `${line} ${word}` : word;
+          if (ctx.measureText(testLine).width > maxWidth && line) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = testLine;
+          }
+        });
+        if (line) lines.push(line);
+        return lines;
+      }
+
+      function drawBarChart(canvas, labels, values) {
+        const ctx = setupCanvas(canvas);
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        ctx.clearRect(0, 0, width, height);
+
+        const paddingTop = 24;
+        const paddingBottom = 54;
+        const paddingLeft = 36;
+        const paddingRight = 20;
+        const chartWidth = width - paddingLeft - paddingRight;
+        const chartHeight = height - paddingTop - paddingBottom;
+        const maxValue = Math.max(...values, 1);
+
+        ctx.strokeStyle = "rgba(31,26,20,0.2)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, paddingTop);
+        ctx.lineTo(paddingLeft, height - paddingBottom);
+        ctx.lineTo(width - paddingRight, height - paddingBottom);
+        ctx.stroke();
+
+        const barWidth = chartWidth / labels.length * 0.6;
+        labels.forEach((label, i) => {
+          const value = values[i] || 0;
+          const slotWidth = chartWidth / labels.length;
+          const x = paddingLeft + slotWidth * i + (slotWidth - barWidth) / 2;
+          const barHeight = (value / maxValue) * chartHeight;
+          const y = height - paddingBottom - barHeight;
+          ctx.fillStyle = palette[i % palette.length];
+          ctx.fillRect(x, y, barWidth, barHeight);
+          ctx.fillStyle = "#1f1a14";
+          ctx.font = "10px 'Trebuchet MS', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          const labelLines = wrapText(ctx, label, Math.max(40, slotWidth - 6));
+          labelLines.forEach((line, lineIndex) => {
+            ctx.fillText(line, x + barWidth / 2, height - paddingBottom + 6 + lineIndex * 12);
+          });
+        });
+      }
+
+      function drawRadarChart(canvas, labels, series) {
+        const ctx = setupCanvas(canvas);
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        ctx.clearRect(0, 0, width, height);
+
+        const centerX = width / 2;
+        const centerY = height / 2 + 8;
+        const radius = Math.min(width, height) / 2 - 40;
+        const allValues = series.flatMap((item) => item.values || []);
+        const fallbackMax = Math.max(...allValues, 1);
+        const maxValue = state.radarMax && state.radarMax > 0 ? state.radarMax : fallbackMax;
+
+        const levels = 4;
+        ctx.strokeStyle = "rgba(31,26,20,0.15)";
+        for (let level = 1; level <= levels; level += 1) {
+          ctx.beginPath();
+          labels.forEach((_, i) => {
+            const angle = (Math.PI * 2 * i) / labels.length - Math.PI / 2;
+            const r = (radius * level) / levels;
+            const x = centerX + Math.cos(angle) * r;
+            const y = centerY + Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.stroke();
+        }
+
+        series.forEach((item) => {
+          ctx.beginPath();
+          labels.forEach((label, i) => {
+            const angle = (Math.PI * 2 * i) / labels.length - Math.PI / 2;
+            const value = item.values[i] || 0;
+            const r = (value / maxValue) * radius;
+            const x = centerX + Math.cos(angle) * r;
+            const y = centerY + Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fillStyle = hexToRgba(item.color, item.fill ?? 0.2);
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 2;
+          ctx.fill();
+          ctx.stroke();
+        });
+
+        labels.forEach((label, i) => {
+          const angle = (Math.PI * 2 * i) / labels.length - Math.PI / 2;
+          const labelX = centerX + Math.cos(angle) * (radius + 12);
+          const labelY = centerY + Math.sin(angle) * (radius + 12);
+          ctx.fillStyle = "#1f1a14";
+          ctx.font = "10px 'Trebuchet MS', sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const labelLines = wrapText(ctx, label, 90);
+          labelLines.forEach((line, lineIndex) => {
+            ctx.fillText(line, labelX, labelY + lineIndex * 12);
+          });
+        });
+      }
+
+      function renderAllRespondents() {
+        allTable.innerHTML = "";
+        if (!state.computed.length) {
+          allTable.innerHTML = "<div class=\"empty\">Load data to see the table.</div>";
+          return;
+        }
+
+        const roles = new Set();
+        state.records.forEach((record) => {
+          const role = getRole(record);
+          if (role) roles.add(role);
+        });
+        const currentRole = roleFilter.value;
+        roleFilter.innerHTML = "<option value=\"all\">All</option>";
+        Array.from(roles)
+          .sort((a, b) => a.localeCompare(b))
+          .forEach((role) => {
+            const option = document.createElement("option");
+            option.value = role;
+            option.textContent = role;
+            roleFilter.appendChild(option);
+          });
+        if (roles.has(currentRole)) roleFilter.value = currentRole;
+
+        let rows = [...state.computed];
+        if (roleFilter.value !== "all") {
+          rows = rows.filter((entry) => getRole(entry.record) === roleFilter.value);
+        }
+
+        if (sortBy.value === "name-desc") {
+          rows.sort((a, b) => getDisplayName(b.record).localeCompare(getDisplayName(a.record)));
+        } else if (sortBy.value === "autoeff-desc") {
+          rows.sort((a, b) => (b.scores.AUTOEFF_TOT || -Infinity) - (a.scores.AUTOEFF_TOT || -Infinity));
+        } else if (sortBy.value === "autoeff-asc") {
+          rows.sort((a, b) => (a.scores.AUTOEFF_TOT || Infinity) - (b.scores.AUTOEFF_TOT || Infinity));
+        } else {
+          rows.sort((a, b) => getDisplayName(a.record).localeCompare(getDisplayName(b.record)));
+        }
+
+        const tableWrap = document.createElement("div");
+        tableWrap.className = "table-wrap";
+        const table = document.createElement("table");
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        ["Cognome e nome", "Tipologia di Incarico:", "Indirizzo email", ...SCORE_KEYS].forEach((title) => {
+          const th = document.createElement("th");
+          th.textContent = title;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        rows.forEach((entry) => {
+          const tr = document.createElement("tr");
+          tr.tabIndex = 0;
+          tr.addEventListener("click", () => {
+            state.currentIndex = entry.index;
+            renderDashboard(entry.index);
+          });
+          tr.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              state.currentIndex = entry.index;
+              renderDashboard(entry.index);
+            }
+          });
+
+          const nameTd = document.createElement("td");
+          nameTd.textContent = getDisplayName(entry.record);
+          const roleTd = document.createElement("td");
+          roleTd.textContent = getRole(entry.record);
+          const emailTd = document.createElement("td");
+          emailTd.textContent = getEmail(entry.record);
+          tr.appendChild(nameTd);
+          tr.appendChild(roleTd);
+          tr.appendChild(emailTd);
+
+          SCORE_KEYS.forEach((key) => {
+            const td = document.createElement("td");
+            const value = entry.scores[key];
+            td.textContent = value !== null && value !== undefined ? Number(value).toFixed(2) : "N/A";
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        allTable.appendChild(tableWrap);
+      }
+
+      function createPrintDashboard(entry) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "print-page";
+        const header = document.createElement("h2");
+        header.textContent = getDisplayName(entry.record);
+        wrapper.appendChild(header);
+
+        const role = getRole(entry.record);
+        if (role) {
+          const roleEl = document.createElement("p");
+          roleEl.className = "note";
+          roleEl.textContent = `Tipologia di Incarico: ${role}`;
+          wrapper.appendChild(roleEl);
+        }
+
+        const scoreGrid = document.createElement("div");
+        scoreGrid.className = "dashboard-grid";
+        state.schema.scoreDefs.forEach((def) => {
+          scoreGrid.appendChild(createScoreCard(def.key, entry.scores[def.key], entry.labels[def.key]));
+        });
+        wrapper.appendChild(scoreGrid);
+        wrapper.appendChild(createSampleAverageBar());
+
+        const chartGrid = document.createElement("div");
+        chartGrid.className = "chart-grid";
+        const barCard = document.createElement("div");
+        barCard.className = "chart-card";
+        const barCanvas = document.createElement("canvas");
+        barCard.appendChild(barCanvas);
+        chartGrid.appendChild(barCard);
+
+        const radarCard = document.createElement("div");
+        radarCard.className = "chart-card";
+        const radarLegend = buildRadarLegend(entry.index);
+        radarCard.appendChild(radarLegend);
+        const radarCanvas = document.createElement("canvas");
+        radarCard.appendChild(radarCanvas);
+        chartGrid.appendChild(radarCard);
+        wrapper.appendChild(chartGrid);
+
+        requestAnimationFrame(() => {
+          const barKeys = SCORE_KEYS;
+          const barLabels = barKeys.map((key) => getScoreLabel(key));
+          const barValues = barKeys.map((key) => (entry.scores[key] !== null ? entry.scores[key] : 0));
+          drawBarChart(barCanvas, barLabels, barValues);
+
+          const { labels, series } = buildRadarSeries(entry);
+          drawRadarChart(radarCanvas, labels, series);
+        });
+
+        return wrapper;
+      }
+
+      function waitForPrintReady() {
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => {
+            setTimeout(resolve, 80);
+          });
+        });
+      }
+
+      async function exportPdfSingle(entry) {
+        printSingle.innerHTML = "";
+        printAll.innerHTML = "";
+        printSingle.appendChild(createPrintDashboard(entry));
+        const safeName = sanitizeFileName(getDisplayName(entry.record));
+        state.originalTitle = state.originalTitle || document.title;
+        document.title = `${safeName}_dashboard`;
+        document.body.classList.add("print-mode");
+        await waitForPrintReady();
+        window.print();
+      }
+
+      async function exportPdfAll() {
+        printSingle.innerHTML = "";
+        printAll.innerHTML = "";
+        const sorted = [...state.computed].sort((a, b) =>
+          getDisplayName(a.record).localeCompare(getDisplayName(b.record))
+        );
+        sorted.forEach((entry) => {
+          printAll.appendChild(createPrintDashboard(entry));
+        });
+        state.originalTitle = state.originalTitle || document.title;
+        document.title = "all_respondents_dashboard";
+        document.body.classList.add("print-mode");
+        await waitForPrintReady();
+        window.print();
+      }
+
+      window.addEventListener("afterprint", () => {
+        document.body.classList.remove("print-mode");
+        printSingle.innerHTML = "";
+        printAll.innerHTML = "";
+        if (state.originalTitle) {
+          document.title = state.originalTitle;
+          state.originalTitle = null;
+        }
+      });
+
+      async function loadDataset(headers, records) {
+        state.headers = headers;
+        state.records = records;
+        state.schema = buildSchema(headers);
+        state.compareIndex = null;
+
+        renderPreview(headers, records);
+        renderManualRules();
+        computeScores();
+      }
+
+      async function parseFile(file) {
+        let extension = "";
+        try {
+          clearStatus();
+          extension = file.name.split(".").pop().toLowerCase();
+          if (extension === "csv") {
+            const buffer = await file.arrayBuffer();
+            let text = "";
+            try {
+              text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+            } catch (error) {
+              text = new TextDecoder("iso-8859-1").decode(buffer);
+            }
+            const rows = parseCSV(text);
+            const { headers, records } = buildRecords(rows);
+            sheetPicker.classList.add("hidden");
+            state.currentSheet = null;
+            await loadDataset(headers, records);
+            setStatus("CSV parsed successfully.", false);
+          } else if (extension === "xlsx") {
+            const buffer = await file.arrayBuffer();
+            state.xlsxMeta = await parseXlsxMeta(buffer);
+            sheetSelect.innerHTML = "";
+            state.xlsxMeta.sheets.forEach((sheet) => {
+              const option = document.createElement("option");
+              option.value = sheet.name;
+              option.textContent = sheet.name;
+              sheetSelect.appendChild(option);
+            });
+            sheetPicker.classList.remove("hidden");
+            const defaultSheet = state.xlsxMeta.sheets.find((sheet) => sheet.name === DEFAULT_SHEET);
+            if (defaultSheet) {
+              sheetSelect.value = DEFAULT_SHEET;
+              await parseSelectedSheet(DEFAULT_SHEET);
+              setStatus("XLSX parsed successfully.", false);
+            } else {
+              state.currentSheet = null;
+              setStatus(`Sheet '${DEFAULT_SHEET}' not found. Please select a sheet.`, true);
+            }
+          } else {
+            throw new Error("Unsupported file type");
+          }
+        } catch (error) {
+          let message = error.message || "Unknown error";
+          if (extension === "xlsx" && message.includes("DecompressionStream")) {
+            message += " (Try exporting as CSV if this browser blocks XLSX decompression.)";
+          }
+          setStatus(`Parsing error: ${message}`, true);
+        }
+      }
+
+      async function parseSelectedSheet(sheetName) {
+        try {
+          clearStatus();
+          const rows = await parseXlsxSheet(sheetName);
+          const { headers, records } = buildRecords(rows);
+          state.currentSheet = sheetName;
+          await loadDataset(headers, records);
+          setStatus(`Sheet '${sheetName}' loaded.`, false);
+        } catch (error) {
+          setStatus(`Sheet error: ${error.message}`, true);
+        }
+      }
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (file) parseFile(file);
+      });
+
+      sheetSelect.addEventListener("change", (event) => {
+        const sheetName = event.target.value;
+        if (sheetName) parseSelectedSheet(sheetName);
+      });
+
+      loadDemo.addEventListener("click", async () => {
+        const { headers, records } = buildRecords(demoRows);
+        state.currentSheet = "Demo";
+        sheetPicker.classList.add("hidden");
+        await loadDataset(headers, records);
+        setStatus("Demo data loaded.", false);
+      });
+
+      resetData.addEventListener("click", () => {
+        resetState();
+        fileInput.value = "";
+        state.manualRules = defaultManualRules();
+        renderManualRules();
+        setStatus("Data cleared from memory.", false);
+      });
+
+      document.querySelectorAll("input[name='labelMode']").forEach((input) => {
+        input.addEventListener("change", () => {
+          state.labelMode = input.value;
+          autoPanel.classList.toggle("hidden", state.labelMode !== "auto");
+          manualPanel.classList.toggle("hidden", state.labelMode !== "manual");
+          computeScores();
+        });
+      });
+
+      applyLabels.addEventListener("click", () => {
+        readManualRulesFromDom();
+        computeScores();
+        setStatus("Labeling updated.", false);
+      });
+
+      searchInput.addEventListener("input", () => {
+        renderSearchResults();
+      });
+
+      sortBy.addEventListener("change", renderAllRespondents);
+      roleFilter.addEventListener("change", renderAllRespondents);
+      exportAll.addEventListener("click", exportPdfAll);
+
+      window.addEventListener("resize", () => {
+        if (state.currentIndex !== null) {
+          const entry = state.computed.find((item) => item.index === state.currentIndex);
+          if (entry) drawCharts(entry);
+        }
+      });
+
+      state.manualRules = defaultManualRules();
+      renderManualRules();
+      renderSearchResults();
+    </script>
+  </body>
+</html>
