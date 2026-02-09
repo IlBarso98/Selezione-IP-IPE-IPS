@@ -801,22 +801,30 @@
         <div id="dashboardContent" class="empty">No respondent selected.</div>
       </section>
 
-      <section class="panel no-print" id="bestCandidates">
+      <section class="panel" id="ranking">
         <h2>Miglior candidato</h2>
         <p class="note">Selezione per ruolo basata sulla modalita di ranking attiva.</p>
-        <div id="bestCandidatesGrid" class="best-grid"></div>
-      </section>
-
-      <section class="panel no-print" id="ranking">
-        <h2>Classifica</h2>
+        <div class="toolbar">
+          <label>
+            Ruolo:
+            <select id="rankingRole">
+              <option value="all">Tutti i candidati</option>
+              <option value="IP">IP</option>
+              <option value="IPE">IPE</option>
+              <option value="IPS">IPS</option>
+            </select>
+          </label>
+          <button class="btn" id="exportRanking">Export PDF (ruolo selezionato)</button>
+        </div>
         <div class="mode-toggle ranking-toggle" role="radiogroup" aria-label="Modalita ranking">
           <label><input type="radio" name="rankingMode" value="balanced" checked /> Balanced</label>
           <label><input type="radio" name="rankingMode" value="performance" /> Performance-only</label>
           <label><input type="radio" name="rankingMode" value="credibility" /> Credibility-first</label>
         </div>
+        <div id="bestCandidatesGrid"></div>
         <div id="rankingTable" class="ranking-table"></div>
         <h3>Top 5 - Perche e qui</h3>
-        <div id="rankingTop" class="ranking-top"></div>
+        <div id="rankingTop"></div>
       </section>
 
       <section class="panel" id="all">
@@ -837,7 +845,7 @@
               <option value="all">All</option>
             </select>
           </label>
-          <button class="btn" id="exportAll">Export PDF (all respondents)</button>
+          <button class="btn" id="exportAll">Export PDF (ruolo selezionato)</button>
         </div>
         <div id="allTable" style="margin-top: 12px;"></div>
       </section>
@@ -928,6 +936,7 @@
         radarMax: 1,
         sampleAverages: {},
         rankingMode: "balanced",
+        rankingRole: "all",
         rankingStats: {},
         rankingData: [],
         rangeWarnings: new Set(),
@@ -1114,6 +1123,8 @@
       const bestCandidatesGrid = document.getElementById("bestCandidatesGrid");
       const rankingTable = document.getElementById("rankingTable");
       const rankingTop = document.getElementById("rankingTop");
+      const rankingRole = document.getElementById("rankingRole");
+      const exportRanking = document.getElementById("exportRanking");
       const rankingModeInputs = document.querySelectorAll("input[name='rankingMode']");
       const sortBy = document.getElementById("sortBy");
       const roleFilter = document.getElementById("roleFilter");
@@ -1183,6 +1194,7 @@
         state.radarMax = 1;
         state.sampleAverages = {};
         state.rankingMode = "balanced";
+        state.rankingRole = "all";
         state.rankingStats = {};
         state.rankingData = [];
         state.rangeWarnings = new Set();
@@ -1201,6 +1213,9 @@
         manualRulesGrid.innerHTML = "";
         sheetSelect.innerHTML = "";
         sheetPicker.classList.add("hidden");
+        if (rankingRole) {
+          rankingRole.value = state.rankingRole;
+        }
         rankingModeInputs.forEach((input) => {
           input.checked = input.value === state.rankingMode;
         });
@@ -1932,16 +1947,25 @@
         return Number.isFinite(value) ? value.toFixed(2) : "N/A";
       }
 
-      function extractRoleCode(roleText) {
+      function extractRoleCodes(roleText) {
         const text = String(roleText || "").toUpperCase();
-        if (text.includes("IPE")) return "IPE";
-        if (text.includes("IPS")) return "IPS";
-        if (text.includes("IP")) return "IP";
-        return "";
+        const roles = new Set();
+        if (/\bIPE\b/.test(text)) roles.add("IPE");
+        if (/\bIPS\b/.test(text)) roles.add("IPS");
+        if (/\bIP\b/.test(text)) roles.add("IP");
+        return Array.from(roles);
+      }
+
+      function formatRoleCodes(roleCodes) {
+        return roleCodes && roleCodes.length ? roleCodes.join(", ") : "";
       }
 
       function getRankingModeLabel() {
         return RANKING_MODE_LABELS[state.rankingMode] || RANKING_MODE_LABELS.balanced;
+      }
+
+      function getRankingScopeLabel(scope) {
+        return scope === "all" ? "Tutti i candidati" : scope;
       }
 
       function buildRankingCandidates() {
@@ -1950,9 +1974,29 @@
           record: entry.record,
           name: getDisplayName(entry.record),
           role: getRole(entry.record),
-          roleCode: extractRoleCode(getRole(entry.record)),
+          roleCodes: extractRoleCodes(getRole(entry.record)),
           scores: entry.scores
         }));
+      }
+
+      function filterCandidatesByScope(candidates, scope) {
+        if (scope === "all") return candidates;
+        return candidates.filter((candidate) => candidate.roleCodes.includes(scope));
+      }
+
+      function pickBestCandidatesByRole(ranked, roles) {
+        const best = {};
+        roles.forEach((role) => {
+          best[role] = null;
+        });
+        ranked.forEach((candidate) => {
+          roles.forEach((role) => {
+            if (!best[role] && candidate.roleCodes.includes(role)) {
+              best[role] = candidate;
+            }
+          });
+        });
+        return best;
       }
 
       function buildBestMetric(label, value) {
@@ -1967,21 +2011,24 @@
         return row;
       }
 
-      function renderBestCandidates(ranked) {
-        bestCandidatesGrid.innerHTML = "";
-        if (!ranked.length) {
-          bestCandidatesGrid.innerHTML = "<div class=\"empty\">Load data to see best candidates.</div>";
-          return;
+      function buildBestCandidatesGrid(ranked, scope, hasData) {
+        const grid = document.createElement("div");
+        grid.className = "best-grid";
+        if (!hasData) {
+          grid.innerHTML = "<div class=\"empty\">Load data to see best candidates.</div>";
+          return grid;
         }
         const modeLabel = getRankingModeLabel();
-        BEST_ROLES.forEach((role) => {
+        const roles = scope === "all" ? BEST_ROLES : [scope];
+        const bestByRole = pickBestCandidatesByRole(ranked, roles);
+        roles.forEach((role) => {
           const card = document.createElement("div");
           card.className = "best-card";
           const roleEl = document.createElement("div");
           roleEl.className = "best-role";
           roleEl.textContent = role;
           card.appendChild(roleEl);
-          const best = ranked.find((candidate) => candidate.roleCode === role);
+          const best = bestByRole[role];
           if (!best) {
             const empty = document.createElement("div");
             empty.className = "empty";
@@ -2003,16 +2050,17 @@
             card.appendChild(score);
             card.appendChild(metrics);
           }
-          bestCandidatesGrid.appendChild(card);
+          grid.appendChild(card);
         });
+        return grid;
       }
 
-      function renderRankingTable(ranked) {
-        rankingTable.innerHTML = "";
-        if (!ranked.length) {
-          rankingTable.innerHTML = "<div class=\"empty\">Load data to see ranking.</div>";
-          return;
-        }
+      function renderBestCandidates(ranked, scope) {
+        bestCandidatesGrid.innerHTML = "";
+        bestCandidatesGrid.appendChild(buildBestCandidatesGrid(ranked, scope, state.computed.length > 0));
+      }
+
+      function buildRankingTableElement(ranked) {
         const tableWrap = document.createElement("div");
         tableWrap.className = "table-wrap";
         const table = document.createElement("table");
@@ -2050,14 +2098,30 @@
 
         table.appendChild(tbody);
         tableWrap.appendChild(table);
-        rankingTable.appendChild(tableWrap);
+        return tableWrap;
       }
 
-      function renderRankingTop(ranked, statsByMetric) {
-        rankingTop.innerHTML = "";
+      function renderRankingTable(ranked) {
+        rankingTable.innerHTML = "";
         if (!ranked.length) {
-          rankingTop.innerHTML = "<div class=\"empty\">Load data to see top 5.</div>";
+          const message = state.computed.length
+            ? "Nessun candidato per questo ruolo."
+            : "Load data to see ranking.";
+          rankingTable.innerHTML = `<div class="empty">${message}</div>`;
           return;
+        }
+        rankingTable.appendChild(buildRankingTableElement(ranked));
+      }
+
+      function buildRankingTopElement(ranked, statsByMetric) {
+        const container = document.createElement("div");
+        container.className = "ranking-top";
+        if (!ranked.length) {
+          const message = state.computed.length
+            ? "Nessun candidato per questo ruolo."
+            : "Load data to see top 5.";
+          container.innerHTML = `<div class="empty">${message}</div>`;
+          return container;
         }
         const modeLabel = getRankingModeLabel();
         const labelsByKey = SCORE_LABELS;
@@ -2071,7 +2135,7 @@
           name.textContent = `${index + 1}. ${candidate.name}`;
           const role = document.createElement("div");
           role.className = "ranking-role";
-          role.textContent = candidate.roleCode || "";
+          role.textContent = formatRoleCodes(candidate.roleCodes);
           nameWrap.appendChild(name);
           if (role.textContent) nameWrap.appendChild(role);
           const score = document.createElement("div");
@@ -2094,8 +2158,14 @@
 
           card.appendChild(header);
           card.appendChild(list);
-          rankingTop.appendChild(card);
+          container.appendChild(card);
         });
+        return container;
+      }
+
+      function renderRankingTop(ranked, statsByMetric) {
+        rankingTop.innerHTML = "";
+        rankingTop.appendChild(buildRankingTopElement(ranked, statsByMetric));
       }
 
       function logRangeWarnings(candidates) {
@@ -2112,22 +2182,24 @@
       function renderRanking() {
         if (!bestCandidatesGrid || !rankingTable || !rankingTop) return;
         if (!state.computed.length) {
-          bestCandidatesGrid.innerHTML = "<div class=\"empty\">Load data to see best candidates.</div>";
-          rankingTable.innerHTML = "<div class=\"empty\">Load data to see ranking.</div>";
-          rankingTop.innerHTML = "<div class=\"empty\">Load data to see top 5.</div>";
+          renderBestCandidates([], state.rankingRole);
+          renderRankingTable([]);
+          renderRankingTop([], {});
           return;
         }
         if (!Scoring || !Scoring.rankCandidates) {
           rankingTable.innerHTML = "<div class=\"empty\">Scoring module not available.</div>";
           return;
         }
+        const scope = state.rankingRole || "all";
         const candidates = buildRankingCandidates();
         const statsByMetric = Scoring.computeStatsByMetric(candidates, SCORE_KEYS);
-        const ranked = Scoring.rankCandidates(candidates, statsByMetric, state.rankingMode);
+        const scopedCandidates = filterCandidatesByScope(candidates, scope);
+        const ranked = Scoring.rankCandidates(scopedCandidates, statsByMetric, state.rankingMode);
         state.rankingStats = statsByMetric;
         state.rankingData = ranked;
         logRangeWarnings(candidates);
-        renderBestCandidates(ranked);
+        renderBestCandidates(ranked, scope);
         renderRankingTable(ranked);
         renderRankingTop(ranked, statsByMetric);
       }
@@ -2139,7 +2211,10 @@
           return;
         }
         const query = searchInput.value.trim().toLowerCase();
-        const results = state.computed.filter((entry) => getSearchText(entry.record).includes(query));
+        const scope = state.rankingRole || "all";
+        const results = state.computed
+          .filter((entry) => getSearchText(entry.record).includes(query))
+          .filter((entry) => recordMatchesScope(entry.record, scope));
         results.slice(0, 8).forEach((entry) => {
           const item = document.createElement("div");
           item.className = "result-item";
@@ -2592,6 +2667,10 @@
         if (roles.has(currentRole)) roleFilter.value = currentRole;
 
         let rows = [...state.computed];
+        const scope = state.rankingRole || "all";
+        if (scope !== "all") {
+          rows = rows.filter((entry) => recordMatchesScope(entry.record, scope));
+        }
         if (roleFilter.value !== "all") {
           rows = rows.filter((entry) => getRole(entry.record) === roleFilter.value);
         }
@@ -2656,6 +2735,51 @@
         table.appendChild(tbody);
         tableWrap.appendChild(table);
         allTable.appendChild(tableWrap);
+      }
+
+      function recordMatchesScope(record, scope) {
+        if (scope === "all") return true;
+        const roleCodes = extractRoleCodes(getRole(record));
+        return roleCodes.includes(scope);
+      }
+
+      function getRankingDataForScope(scope) {
+        if (!Scoring || !Scoring.rankCandidates) {
+          return { ranked: [], statsByMetric: {} };
+        }
+        const candidates = buildRankingCandidates();
+        const statsByMetric = Scoring.computeStatsByMetric(candidates, SCORE_KEYS);
+        const scopedCandidates = filterCandidatesByScope(candidates, scope);
+        const ranked = Scoring.rankCandidates(scopedCandidates, statsByMetric, state.rankingMode);
+        return { ranked, statsByMetric };
+      }
+
+      function createPrintSummary(scope) {
+        const summary = document.createElement("div");
+        summary.className = "print-page";
+        const title = document.createElement("h2");
+        title.textContent = "Miglior candidato";
+        summary.appendChild(title);
+        const meta = document.createElement("p");
+        meta.className = "note";
+        meta.textContent = `Ambito: ${getRankingScopeLabel(scope)} | Modalita: ${getRankingModeLabel()}`;
+        summary.appendChild(meta);
+
+        const { ranked, statsByMetric } = getRankingDataForScope(scope);
+        summary.appendChild(buildBestCandidatesGrid(ranked, scope, state.computed.length > 0));
+        if (!ranked.length) {
+          return summary;
+        }
+
+        const tableTitle = document.createElement("h3");
+        tableTitle.textContent = "Ordine candidati";
+        summary.appendChild(tableTitle);
+        summary.appendChild(buildRankingTableElement(ranked));
+        const topTitle = document.createElement("h3");
+        topTitle.textContent = "Top 5 - Perche e qui";
+        summary.appendChild(topTitle);
+        summary.appendChild(buildRankingTopElement(ranked, statsByMetric));
+        return summary;
       }
 
       function createPrintDashboard(entry) {
@@ -2731,20 +2855,32 @@
         window.print();
       }
 
-      async function exportPdfAll() {
+      async function exportPdfByScope(scope) {
+        if (!state.computed.length) {
+          setStatus("Load data to export.", true);
+          return;
+        }
+        const selectedScope = scope || "all";
         printSingle.innerHTML = "";
         printAll.innerHTML = "";
-        const sorted = [...state.computed].sort((a, b) =>
+        printAll.appendChild(createPrintSummary(selectedScope));
+        const scopedEntries = state.computed.filter((entry) => recordMatchesScope(entry.record, selectedScope));
+        const sorted = [...scopedEntries].sort((a, b) =>
           getDisplayName(a.record).localeCompare(getDisplayName(b.record))
         );
         sorted.forEach((entry) => {
           printAll.appendChild(createPrintDashboard(entry));
         });
         state.originalTitle = state.originalTitle || document.title;
-        document.title = "all_respondents_dashboard";
+        const scopeLabel = selectedScope === "all" ? "all" : selectedScope;
+        document.title = `respondents_${scopeLabel}_dashboard`;
         document.body.classList.add("print-mode");
         await waitForPrintReady();
         window.print();
+      }
+
+      async function exportPdfAll() {
+        await exportPdfByScope(state.rankingRole || "all");
       }
 
       window.addEventListener("afterprint", () => {
@@ -2874,6 +3010,16 @@
         });
       });
 
+      if (rankingRole) {
+        rankingRole.addEventListener("change", () => {
+          state.rankingRole = rankingRole.value;
+          renderRanking();
+          if (roleFilter) roleFilter.value = "all";
+          renderAllRespondents();
+          renderSearchResults();
+        });
+      }
+
       applyLabels.addEventListener("click", () => {
         readManualRulesFromDom();
         computeScores();
@@ -2887,6 +3033,9 @@
       sortBy.addEventListener("change", renderAllRespondents);
       roleFilter.addEventListener("change", renderAllRespondents);
       exportAll.addEventListener("click", exportPdfAll);
+      if (exportRanking) {
+        exportRanking.addEventListener("click", () => exportPdfByScope(state.rankingRole || "all"));
+      }
 
       window.addEventListener("resize", () => {
         if (state.currentIndex !== null) {
