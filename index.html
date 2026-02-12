@@ -907,6 +907,7 @@
         high: "#1c7c54",
         na: "#999999"
       };
+      const INVERT_LABEL_KEYS = new Set(["NPOQ-R", "BIDR6_TOT", "BIDR_SDE", "BIDR_IM"]);
 
       const RADAR_COLORS = {
         current: "#ef5b2a",
@@ -1620,22 +1621,30 @@
             return { label: "N/A", color: LABEL_COLORS.na };
           }
           if (value <= thresholds.p33) {
-            return { label: "Basso", color: LABEL_COLORS.low };
+            return { label: "Basso", color: adjustLabelColor(key, "Basso", LABEL_COLORS.low) };
           }
           if (value <= thresholds.p66) {
-            return { label: "Medio", color: LABEL_COLORS.mid };
+            return { label: "Medio", color: adjustLabelColor(key, "Medio", LABEL_COLORS.mid) };
           }
-          return { label: "Alto", color: LABEL_COLORS.high };
+          return { label: "Alto", color: adjustLabelColor(key, "Alto", LABEL_COLORS.high) };
         }
 
         const group = groupForScore(key);
         const rules = state.manualRules[group] || [];
         for (const rule of rules) {
           if (value >= rule.min && value <= rule.max) {
-            return { label: rule.label, color: rule.color };
+            return { label: rule.label, color: adjustLabelColor(key, rule.label, rule.color) };
           }
         }
         return { label: "Out of range", color: LABEL_COLORS.na };
+      }
+
+      function adjustLabelColor(key, label, color) {
+        if (!INVERT_LABEL_KEYS.has(key)) return color;
+        const normalized = String(label || "").trim().toLowerCase();
+        if (normalized === "basso") return LABEL_COLORS.high;
+        if (normalized === "alto") return LABEL_COLORS.low;
+        return color;
       }
 
       function getScoreLabel(key) {
