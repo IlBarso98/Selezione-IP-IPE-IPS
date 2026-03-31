@@ -142,11 +142,6 @@
       ...candidate,
       scoring: computeCandidateScore(candidate, statsByMetric, mode)
     }));
-    const scoreStats = computeStats(scored.map((candidate) => candidate.scoring.score));
-
-    scored.forEach((candidate) => {
-      candidate.scoring.scoreZ = zScore(candidate.scoring.score, scoreStats);
-    });
 
     const epsilon = 0.05;
     scored.sort((a, b) => {

@@ -27,25 +27,6 @@ describe("ranking order", () => {
     const ranked = Scoring.rankCandidates(candidates, stats, "balanced");
     expect(ranked.map((c) => c.name)).toEqual(["A", "B", "C", "D"]);
   });
-
-  it("attaches a standardized z-score for the composite ranking score", () => {
-    const candidates = [
-      { name: "A", scores: { "AUTOEFF_TOT": 100, "NPOQ-R": 10, "BIDR6_TOT": 10 } },
-      { name: "B", scores: { "AUTOEFF_TOT": 90, "NPOQ-R": 20, "BIDR6_TOT": 20 } },
-      { name: "C", scores: { "AUTOEFF_TOT": 80, "NPOQ-R": 30, "BIDR6_TOT": 30 } },
-      { name: "D", scores: { "AUTOEFF_TOT": 70, "NPOQ-R": 40, "BIDR6_TOT": 40 } }
-    ];
-    const stats = Scoring.computeStatsByMetric(candidates, ["AUTOEFF_TOT", "NPOQ-R", "BIDR6_TOT"]);
-    const ranked = Scoring.rankCandidates(candidates, stats, "balanced");
-    const scoreZValues = ranked.map((candidate) => candidate.scoring.scoreZ);
-    const scoreZByName = Object.fromEntries(ranked.map((candidate) => [candidate.name, candidate.scoring.scoreZ]));
-    const meanScoreZ = scoreZValues.reduce((sum, value) => sum + value, 0) / scoreZValues.length;
-
-    expect(scoreZByName.A).toBeGreaterThan(scoreZByName.B);
-    expect(scoreZByName.B).toBeGreaterThan(scoreZByName.C);
-    expect(scoreZByName.C).toBeGreaterThan(scoreZByName.D);
-    expect(meanScoreZ).toBeCloseTo(0, 10);
-  });
 });
 
 describe("tie-break rules", () => {

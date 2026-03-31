@@ -1956,11 +1956,6 @@
         return Number.isFinite(value) ? value.toFixed(2) : "N/A";
       }
 
-      function formatSignedValue(value) {
-        if (!Number.isFinite(value)) return "N/A";
-        return value >= 0 ? `+${value.toFixed(2)}` : value.toFixed(2);
-      }
-
       function extractRoleCodes(roleText) {
         const text = String(roleText || "").toUpperCase();
         const roles = new Set();
@@ -2706,7 +2701,7 @@
         const table = document.createElement("table");
         const thead = document.createElement("thead");
         const headerRow = document.createElement("tr");
-        ["Cognome e nome", "Tipologia di Incarico:", "Indirizzo email", `Z-score (${getRankingModeLabel()})`, ...SCORE_KEYS].forEach((title) => {
+        ["Cognome e nome", "Tipologia di Incarico:", "Indirizzo email", `Score (${getRankingModeLabel()})`, ...SCORE_KEYS].forEach((title) => {
           const th = document.createElement("th");
           th.textContent = title;
           headerRow.appendChild(th);
@@ -2741,7 +2736,7 @@
 
           const zScoreTd = document.createElement("td");
           const rankedCandidate = rankedByIndex.get(entry.index);
-          zScoreTd.textContent = rankedCandidate ? formatSignedValue(rankedCandidate.scoring.scoreZ) : "N/A";
+          zScoreTd.textContent = rankedCandidate ? formatValue(rankedCandidate.scoring.score) : "N/A";
           tr.appendChild(zScoreTd);
 
           SCORE_KEYS.forEach((key) => {
@@ -3028,6 +3023,7 @@
         input.addEventListener("change", () => {
           state.rankingMode = input.value;
           renderRanking();
+          renderAllRespondents();
         });
       });
 
