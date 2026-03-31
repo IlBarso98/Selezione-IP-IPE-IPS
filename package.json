@@ -3,7 +3,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run --globals"
   },
   "devDependencies": {
     "vitest": "^1.6.0"
