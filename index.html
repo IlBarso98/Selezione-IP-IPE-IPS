@@ -846,6 +846,7 @@
             </select>
           </label>
           <button class="btn" id="exportAll">Export PDF (ruolo selezionato)</button>
+          <button class="btn secondary" id="exportAllXlsx">Export XLSX (vista corrente)</button>
         </div>
         <div id="allTable" style="margin-top: 12px;"></div>
       </section>
@@ -1131,6 +1132,7 @@
       const roleFilter = document.getElementById("roleFilter");
       const allTable = document.getElementById("allTable");
       const exportAll = document.getElementById("exportAll");
+      const exportAllXlsx = document.getElementById("exportAllXlsx");
       const printRoot = document.getElementById("printRoot");
       const printSingle = document.getElementById("printSingle");
       const printAll = document.getElementById("printAll");
@@ -1246,6 +1248,26 @@
           .replace(/[^a-zA-Z0-9_-]+/g, "_")
           .replace(/^_+|_+$/g, "");
         return safe.slice(0, 60) || "respondent";
+      }
+
+      function escapeXml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      function downloadBlob(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
       }
 
       function detectDelimiter(text) {
@@ -1489,6 +1511,185 @@
         });
 
         return rows.filter((row) => row && row.some((cell) => cell !== undefined && cell !== ""));
+      }
+
+      const CRC32_TABLE = (() => {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i += 1) {
+          let crc = i;
+          for (let j = 0; j < 8; j += 1) {
+            crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+          }
+          table[i] = crc >>> 0;
+        }
+        return table;
+      })();
+
+      function computeCrc32(data) {
+        let crc = 0xffffffff;
+        for (let i = 0; i < data.length; i += 1) {
+          crc = CRC32_TABLE[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+        }
+        return (crc ^ 0xffffffff) >>> 0;
+      }
+
+      function concatUint8Arrays(chunks) {
+        const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const result = new Uint8Array(totalLength);
+        let offset = 0;
+        chunks.forEach((chunk) => {
+          result.set(chunk, offset);
+          offset += chunk.length;
+        });
+        return result;
+      }
+
+      function createZip(files) {
+        const encoder = new TextEncoder();
+        const localChunks = [];
+        const centralChunks = [];
+        let localOffset = 0;
+
+        files.forEach((file) => {
+          const nameBytes = encoder.encode(file.name);
+          const dataBytes = typeof file.data === "string" ? encoder.encode(file.data) : file.data;
+          const crc32 = computeCrc32(dataBytes);
+
+          const localHeader = new Uint8Array(30 + nameBytes.length);
+          const localView = new DataView(localHeader.buffer);
+          localView.setUint32(0, 0x04034b50, true);
+          localView.setUint16(4, 20, true);
+          localView.setUint16(6, 0, true);
+          localView.setUint16(8, 0, true);
+          localView.setUint16(10, 0, true);
+          localView.setUint16(12, 0, true);
+          localView.setUint32(14, crc32, true);
+          localView.setUint32(18, dataBytes.length, true);
+          localView.setUint32(22, dataBytes.length, true);
+          localView.setUint16(26, nameBytes.length, true);
+          localView.setUint16(28, 0, true);
+          localHeader.set(nameBytes, 30);
+
+          const centralHeader = new Uint8Array(46 + nameBytes.length);
+          const centralView = new DataView(centralHeader.buffer);
+          centralView.setUint32(0, 0x02014b50, true);
+          centralView.setUint16(4, 20, true);
+          centralView.setUint16(6, 20, true);
+          centralView.setUint16(8, 0, true);
+          centralView.setUint16(10, 0, true);
+          centralView.setUint16(12, 0, true);
+          centralView.setUint16(14, 0, true);
+          centralView.setUint32(16, crc32, true);
+          centralView.setUint32(20, dataBytes.length, true);
+          centralView.setUint32(24, dataBytes.length, true);
+          centralView.setUint16(28, nameBytes.length, true);
+          centralView.setUint16(30, 0, true);
+          centralView.setUint16(32, 0, true);
+          centralView.setUint16(34, 0, true);
+          centralView.setUint16(36, 0, true);
+          centralView.setUint32(38, 0, true);
+          centralView.setUint32(42, localOffset, true);
+          centralHeader.set(nameBytes, 46);
+
+          localChunks.push(localHeader, dataBytes);
+          centralChunks.push(centralHeader);
+          localOffset += localHeader.length + dataBytes.length;
+        });
+
+        const centralDirectory = concatUint8Arrays(centralChunks);
+        const endOfCentralDirectory = new Uint8Array(22);
+        const eocdView = new DataView(endOfCentralDirectory.buffer);
+        eocdView.setUint32(0, 0x06054b50, true);
+        eocdView.setUint16(4, 0, true);
+        eocdView.setUint16(6, 0, true);
+        eocdView.setUint16(8, files.length, true);
+        eocdView.setUint16(10, files.length, true);
+        eocdView.setUint32(12, centralDirectory.length, true);
+        eocdView.setUint32(16, localOffset, true);
+        eocdView.setUint16(20, 0, true);
+
+        return concatUint8Arrays([...localChunks, centralDirectory, endOfCentralDirectory]);
+      }
+
+      function columnIndexToRef(index) {
+        let current = index + 1;
+        let result = "";
+        while (current > 0) {
+          const remainder = (current - 1) % 26;
+          result = String.fromCharCode(65 + remainder) + result;
+          current = Math.floor((current - 1) / 26);
+        }
+        return result;
+      }
+
+      function buildWorksheetCell(value, rowIndex, columnIndex) {
+        const ref = `${columnIndexToRef(columnIndex)}${rowIndex + 1}`;
+        if (typeof value === "number" && Number.isFinite(value)) {
+          return `<c r="${ref}"><v>${value}</v></c>`;
+        }
+        return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(value ?? "")}</t></is></c>`;
+      }
+
+      function buildWorksheetXml(rows) {
+        const rowXml = rows
+          .map((row, rowIndex) => {
+            const cells = row.map((value, columnIndex) => buildWorksheetCell(value, rowIndex, columnIndex)).join("");
+            return `<row r="${rowIndex + 1}">${cells}</row>`;
+          })
+          .join("");
+        return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>${rowXml}</sheetData>
+</worksheet>`;
+      }
+
+      function buildWorkbookXlsx(sheetName, rows) {
+        const safeSheetName = String(sheetName || "Respondents")
+          .replace(/[\\/*?:\[\]]/g, " ")
+          .trim()
+          .slice(0, 31) || "Respondents";
+
+        const files = [
+          {
+            name: "[Content_Types].xml",
+            data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`
+          },
+          {
+            name: "_rels/.rels",
+            data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+          },
+          {
+            name: "xl/workbook.xml",
+            data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="${escapeXml(safeSheetName)}" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`
+          },
+          {
+            name: "xl/_rels/workbook.xml.rels",
+            data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`
+          },
+          {
+            name: "xl/worksheets/sheet1.xml",
+            data: buildWorksheetXml(rows)
+          }
+        ];
+
+        return createZip(files);
       }
 
       function sanitizeHeaders(headers) {
@@ -2658,50 +2859,22 @@
           return;
         }
 
-        const roles = new Set();
-        state.records.forEach((record) => {
-          const role = getRole(record);
-          if (role) roles.add(role);
-        });
-        const currentRole = roleFilter.value;
+        const { rows, rankedByIndex, modeLabel, roleOptions, selectedRole } = getAllRespondentsViewData();
         roleFilter.innerHTML = "<option value=\"all\">All</option>";
-        Array.from(roles)
-          .sort((a, b) => a.localeCompare(b))
-          .forEach((role) => {
-            const option = document.createElement("option");
-            option.value = role;
-            option.textContent = role;
-            roleFilter.appendChild(option);
-          });
-        if (roles.has(currentRole)) roleFilter.value = currentRole;
-
-        let rows = [...state.computed];
-        const scope = state.rankingRole || "all";
-        const { ranked } = getRankingDataForScope(scope);
-        const rankedByIndex = new Map(ranked.map((candidate) => [candidate.index, candidate]));
-        if (scope !== "all") {
-          rows = rows.filter((entry) => recordMatchesScope(entry.record, scope));
-        }
-        if (roleFilter.value !== "all") {
-          rows = rows.filter((entry) => getRole(entry.record) === roleFilter.value);
-        }
-
-        if (sortBy.value === "name-desc") {
-          rows.sort((a, b) => getDisplayName(b.record).localeCompare(getDisplayName(a.record)));
-        } else if (sortBy.value === "autoeff-desc") {
-          rows.sort((a, b) => (b.scores.AUTOEFF_TOT || -Infinity) - (a.scores.AUTOEFF_TOT || -Infinity));
-        } else if (sortBy.value === "autoeff-asc") {
-          rows.sort((a, b) => (a.scores.AUTOEFF_TOT || Infinity) - (b.scores.AUTOEFF_TOT || Infinity));
-        } else {
-          rows.sort((a, b) => getDisplayName(a.record).localeCompare(getDisplayName(b.record)));
-        }
+        roleOptions.forEach((role) => {
+          const option = document.createElement("option");
+          option.value = role;
+          option.textContent = role;
+          roleFilter.appendChild(option);
+        });
+        roleFilter.value = selectedRole;
 
         const tableWrap = document.createElement("div");
         tableWrap.className = "table-wrap";
         const table = document.createElement("table");
         const thead = document.createElement("thead");
         const headerRow = document.createElement("tr");
-        ["Cognome e nome", "Tipologia di Incarico:", "Indirizzo email", `Score (${getRankingModeLabel()})`, ...SCORE_KEYS].forEach((title) => {
+        ["Cognome e nome", "Tipologia di Incarico:", "Indirizzo email", `Score (${modeLabel})`, ...SCORE_KEYS].forEach((title) => {
           const th = document.createElement("th");
           th.textContent = title;
           headerRow.appendChild(th);
@@ -2734,10 +2907,10 @@
           tr.appendChild(roleTd);
           tr.appendChild(emailTd);
 
-          const zScoreTd = document.createElement("td");
+          const scoreTd = document.createElement("td");
           const rankedCandidate = rankedByIndex.get(entry.index);
-          zScoreTd.textContent = rankedCandidate ? formatValue(rankedCandidate.scoring.score) : "N/A";
-          tr.appendChild(zScoreTd);
+          scoreTd.textContent = rankedCandidate ? formatValue(rankedCandidate.scoring.score) : "N/A";
+          tr.appendChild(scoreTd);
 
           SCORE_KEYS.forEach((key) => {
             const td = document.createElement("td");
@@ -2751,6 +2924,93 @@
         table.appendChild(tbody);
         tableWrap.appendChild(table);
         allTable.appendChild(tableWrap);
+      }
+
+      function getAllRespondentsViewData() {
+        const roles = new Set();
+        state.records.forEach((record) => {
+          const role = getRole(record);
+          if (role) roles.add(role);
+        });
+        const currentRole = roleFilter.value;
+        const roleOptions = Array.from(roles).sort((a, b) => a.localeCompare(b));
+        const selectedRole = roles.has(currentRole) ? currentRole : "all";
+
+        let rows = [...state.computed];
+        const scope = state.rankingRole || "all";
+        const { ranked } = getRankingDataForScope(scope);
+        const rankedByIndex = new Map(ranked.map((candidate) => [candidate.index, candidate]));
+        if (scope !== "all") {
+          rows = rows.filter((entry) => recordMatchesScope(entry.record, scope));
+        }
+        if (selectedRole !== "all") {
+          rows = rows.filter((entry) => getRole(entry.record) === selectedRole);
+        }
+
+        if (sortBy.value === "name-desc") {
+          rows.sort((a, b) => getDisplayName(b.record).localeCompare(getDisplayName(a.record)));
+        } else if (sortBy.value === "autoeff-desc") {
+          rows.sort((a, b) => (b.scores.AUTOEFF_TOT || -Infinity) - (a.scores.AUTOEFF_TOT || -Infinity));
+        } else if (sortBy.value === "autoeff-asc") {
+          rows.sort((a, b) => (a.scores.AUTOEFF_TOT || Infinity) - (b.scores.AUTOEFF_TOT || Infinity));
+        } else {
+          rows.sort((a, b) => getDisplayName(a.record).localeCompare(getDisplayName(b.record)));
+        }
+
+        return {
+          rows,
+          rankedByIndex,
+          modeLabel: getRankingModeLabel(),
+          roleOptions,
+          selectedRole,
+          scope
+        };
+      }
+
+      function exportAllRespondentsXlsx() {
+        if (!state.computed.length) {
+          setStatus("Load data to export.", true);
+          return;
+        }
+
+        try {
+          const { rows, rankedByIndex, modeLabel, selectedRole, scope } = getAllRespondentsViewData();
+          const headers = [
+            "Cognome e nome",
+            "Tipologia di Incarico:",
+            "Indirizzo email",
+            `Score (${modeLabel})`,
+            ...SCORE_KEYS
+          ];
+          const sheetRows = [
+            headers,
+            ...rows.map((entry) => {
+              const rankedCandidate = rankedByIndex.get(entry.index);
+              return [
+                getDisplayName(entry.record),
+                getRole(entry.record),
+                getEmail(entry.record),
+                rankedCandidate ? Math.round(rankedCandidate.scoring.score * 100) / 100 : null,
+                ...SCORE_KEYS.map((key) => entry.scores[key])
+              ];
+            })
+          ];
+
+          const scopeLabel = scope === "all" ? "all" : scope;
+          const roleLabel = selectedRole === "all" ? "all_roles" : sanitizeFileName(selectedRole);
+          const modeLabelSafe = sanitizeFileName(modeLabel.toLowerCase());
+          const fileName = `respondents_${scopeLabel}_${roleLabel}_${modeLabelSafe}.xlsx`;
+          const workbook = buildWorkbookXlsx("All respondents", sheetRows);
+          downloadBlob(
+            new Blob([workbook], {
+              type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }),
+            fileName
+          );
+          setStatus(`XLSX exported (${rows.length} rows).`, false);
+        } catch (error) {
+          setStatus(`XLSX export error: ${error.message}`, true);
+        }
       }
 
       function recordMatchesScope(record, scope) {
@@ -3050,6 +3310,9 @@
       sortBy.addEventListener("change", renderAllRespondents);
       roleFilter.addEventListener("change", renderAllRespondents);
       exportAll.addEventListener("click", exportPdfAll);
+      if (exportAllXlsx) {
+        exportAllXlsx.addEventListener("click", exportAllRespondentsXlsx);
+      }
       if (exportRanking) {
         exportRanking.addEventListener("click", () => exportPdfByScope(state.rankingRole || "all"));
       }
